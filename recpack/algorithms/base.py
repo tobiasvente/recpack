@@ -254,6 +254,38 @@ class ItemSimilarityMatrixAlgorithm(Algorithm):
 
         return scores
 
+
+class UserSimilarityMatrixAlgorithm(Algorithm):
+    """Base algorithm for algorithms that fit a user to user similarity model.
+
+    Model that encodes the similarity between users is expected under the
+    `similarity_matrix_` attribute. This matrix should have shape `(number_of_users x number_of_users)`.
+    This can be a dense or sparse matrix depending on the algorithm used.
+
+    Predictions are made by computing the dot product of the history vector of a user
+    and the similarity matrix.
+
+    Subclasses are expected to implement the `_fit` method to construct the `self.similarity_matrix_` attribute.
+    """
+
+    def _predict(self, X: csr_matrix) -> csr_matrix:
+        """Predict scores for users in X based on the similarity matrix.
+
+        Scores are computed by matrix multiplication of X with the stored similarity matrix.
+
+        :param X: csr_matrix with user interactions
+        :type X: csr_matrix
+        :return: csr_matrix with scores
+        :rtype: csr_matrix
+        """
+        self._check_fit_complete()  # Ensure the model has been fitted
+        scores = self.similarity_matrix_ @ X
+        # Ensure that the resulting scores are returned as a csr_matrix
+        if not isinstance(scores, csr_matrix):
+            scores = csr_matrix(scores)
+
+        return scores
+
     def _check_fit_complete(self):
         """Helper function to check if model was correctly fitted
 
@@ -296,6 +328,31 @@ class TopKItemSimilarityMatrixAlgorithm(ItemSimilarityMatrixAlgorithm):
     to construct the `self.similarity_matrix_` attribute.
 
     :param K: How many similar items will be kept per item.
+    :type K: int
+    """
+
+    def __init__(self, K):
+        super().__init__()
+        self.K = K
+
+
+class TopKUserSimilarityMatrixAlgorithm(UserSimilarityMatrixAlgorithm):
+    """Base algorithm for algorithms that fit a user to user similarity model with K similar users for every user
+
+    Model that encodes the similarity between users is expected
+    under the ``similarity_matrix_`` attribute.
+
+    This matrix should have shape ``(number_of_users x number_of_users)``.
+    This can be a dense or sparse matrix depending on the algorithm used.
+
+    Predictions are made by computing the dot product of the history vector of a user
+    and the similarity matrix.
+
+    Usually a new algorithm will have to
+    implement just the `_fit` method,
+    to construct the `self.similarity_matrix_` attribute.
+
+    :param K: How many similar users will be kept per user.
     :type K: int
     """
 

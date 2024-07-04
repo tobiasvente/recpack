@@ -15,6 +15,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import Normalizer
 
 from recpack.algorithms.base import TopKItemSimilarityMatrixAlgorithm
+from recpack.algorithms.base import TopKUserSimilarityMatrixAlgorithm
 from recpack.algorithms.util import invert, to_binary
 from recpack.util import get_top_K_values
 
@@ -222,6 +223,70 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
             item_similarities = transformer.transform(item_similarities)
 
         self.similarity_matrix_ = item_similarities
+
+
+class UserKNN(TopKUserSimilarityMatrixAlgorithm):
+    """User K Nearest Neighbours model.
+
+    This algorithm computes the k-nearest neighbors for each user based on the
+    selected similarity measure, which can be either "cosine" or "pearson_correlation".
+
+    Cosine similarity between user u and v is computed as:
+    .. math::
+        sim(u,v) = \\frac{X_u X_v}{||X_u||_2 ||X_v||_2}
+
+    :param K: How many neighbors to use per user,
+        make sure to pick a value below the number of rows of the matrix to fit on.
+        Defaults to 50
+    :type K: int, optional
+    :param similarity: Which similarity measure to use,
+        can be one of ["cosine", "pearson_correlation"], defaults to "cosine"
+    :type similarity: str, optional
+    :param normalize_X: Normalize rows in the interaction matrix so that
+        the contribution of users who have rated more items is smaller,
+        defaults to False
+    :type normalize_X: bool, optional
+    :param normalize_sim: Normalize scores per row in the similarity matrix to
+        counteract artificially large similarity scores when the predictive user is
+        rare, defaults to False.
+    :type normalize_sim: bool, optional
+    :raises ValueError: If an unsupported similarity measure is passed.
+    """
+
+    SUPPORTED_SIMILARITIES = ["cosine"]
+
+    def __init__(
+        self,
+        K=50,
+        similarity: str = "cosine",
+        normalize_X: bool = False,
+        normalize_sim: bool = False,
+    ):
+        super().__init__(K)
+
+        if similarity not in self.SUPPORTED_SIMILARITIES:
+            raise ValueError(f"similarity {similarity} not supported")
+        self.similarity = similarity
+
+        self.normalize_X = normalize_X
+        self.normalize_sim = normalize_sim
+
+    def _fit(self, X: csr_matrix) -> None:
+        """Fit the similarity matrix from user to user based on the specified metric."""
+        transformer = Normalizer(norm="l1", copy=False)
+
+        if self.normalize_X:
+            X = transformer.transform(X)
+
+        if self.similarity == "cosine":
+            user_similarities = compute_cosine_similarity(X.T)  # transpose to compute user-user similarity
+
+        user_similarities = get_top_K_values(user_similarities, K=self.K)
+
+        if self.normalize_sim:
+            user_similarities = transformer.transform(user_similarities)
+
+        self.similarity_matrix_ = user_similarities
 
 
 class ItemPNN(ItemKNN):
