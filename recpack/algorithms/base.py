@@ -162,7 +162,7 @@ class Algorithm(BaseEstimator):
             if not X.has_timestamps:
                 raise ValueError(f"{self.name} requires timestamp information in the InteractionMatrix.")
 
-    def fit(self, X: Matrix) -> "Algorithm":
+    def fit(self, X: Matrix, metric_acc=None) -> "Algorithm":
         """Fit the model to the input interaction matrix.
 
         After fitting the model will be ready to use for prediction.
@@ -178,6 +178,8 @@ class Algorithm(BaseEstimator):
 
         :param X: The interactions to fit the model on.
         :type X: Matrix
+        :param metric_acc: Optional metric accumulator object to store fitting time.
+        :type metric_acc: MetricAccumulator
         :return: **self**, fitted algorithm
         :rtype: Algorithm
         """
@@ -187,10 +189,13 @@ class Algorithm(BaseEstimator):
 
         self._check_fit_complete()
         end = time.time()
-        logger.info(f"Fitting {self.name} complete - Took {end - start :.3}s")
+        fitting_time = end - start
+        logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
+        if metric_acc is not None:
+            metric_acc.add(f"{fitting_time:.3}s", self.identifier, "fitting_time")
         return self
 
-    def predict(self, X: Matrix) -> csr_matrix:
+    def predict(self, X: Matrix, metric_acc=None) -> csr_matrix:
         """Predicts scores, given the interactions in X
 
         Recommends items for each nonzero user in the X matrix.
@@ -198,14 +203,18 @@ class Algorithm(BaseEstimator):
         This function is a wrapper around the :meth:`_predict` method,
         and performs checks on in- and output data to guarantee proper computation.
 
+        - The predict function gets timed, and this will get printed
         - Checks that model is fitted correctly
         - checks the output using :meth:`_check_prediction` function
 
         :param X: interactions to predict from.
         :type X: Matrix
+        :param metric_acc: optional metric accumulator object to store inference time.
+        :type metric_acc: MetricAccumulator
         :return: The recommendation scores in a sparse matrix format.
         :rtype: csr_matrix
         """
+        start = time.time()
         self._check_fit_complete()
 
         X = self._transform_predict_input(X)
@@ -213,7 +222,11 @@ class Algorithm(BaseEstimator):
         X_pred = self._predict(X)
 
         self._check_prediction(X_pred, X)
-
+        end = time.time()
+        inference_time = end - start
+        logger.info(f"{self.name} inference complete - Took {inference_time:.3}s")
+        if metric_acc is not None:
+            metric_acc.add(f"{inference_time:.3}s", self.identifier, "inference_time")
         return X_pred
 
 
@@ -642,7 +655,7 @@ class TorchMLAlgorithm(Algorithm):
         with open(self.filename, "wb") as f:
             torch.save(self.model_, f)
 
-    def fit(self, X: Matrix, validation_data: Tuple[Matrix, Matrix]) -> "TorchMLAlgorithm":
+    def fit(self, X: Matrix, validation_data: Tuple[Matrix, Matrix], metric_acc=None) -> "TorchMLAlgorithm":
         """Fit the parameters of the model.
 
         Interaction Matrix X will be used for training,
@@ -665,6 +678,8 @@ class TorchMLAlgorithm(Algorithm):
         Once the model has been fit, the best model is stored to disk,
         if specified during init.
 
+        :param metric_acc: Optional metric accumulator object to store fitting time.
+        :type metric_acc: MetricAccumulator
         :return: **self**, fitted algorithm
         :rtype: TorchMLAlgorithm
         """
@@ -724,7 +739,10 @@ class TorchMLAlgorithm(Algorithm):
 
         self._check_fit_complete()
         end = time.time()
-        logger.info(f"Fitting {self.name} complete - Took {end - start :.3}s")
+        fitting_time = end - start
+        logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
+        if metric_acc is not None:
+            metric_acc.add(f"{fitting_time:.3}s", self.identifier, "fitting_time")
 
         return self
 

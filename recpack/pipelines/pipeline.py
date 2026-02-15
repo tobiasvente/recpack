@@ -51,7 +51,10 @@ class MetricAccumulator:
         results = defaultdict(dict)
         for key in self.acc:
             for k in self.acc[key]:
-                results[key][k] = self.acc[key][k].value
+                if hasattr(self.acc[key][k], "value"):
+                    results[key][k] = self.acc[key][k].value
+                else:
+                    results[key][k] = self.acc[key][k]
         return results
 
     @property
@@ -59,7 +62,8 @@ class MetricAccumulator:
         results = defaultdict(dict)
         for key in self.acc:
             for k in self.acc[key]:
-                results[key][k] = self.acc[key][k].num_users
+                if hasattr(self.acc[key][k], "num_users"):
+                    results[key][k] = self.acc[key][k].num_users
         return results
 
 
@@ -162,13 +166,13 @@ class Pipeline(object):
 
     def _train(self, algorithm: Algorithm, training_data: InteractionMatrix) -> Algorithm:
         if isinstance(algorithm, TorchMLAlgorithm):
-            algorithm.fit(training_data, self.validation_data)
+            algorithm.fit(training_data, self.validation_data, self._metric_acc)
         else:
-            algorithm.fit(training_data)
+            algorithm.fit(training_data, self._metric_entries)
         return algorithm
 
     def _predict_and_postprocess(self, algorithm: Algorithm, data_in: InteractionMatrix) -> csr_matrix:
-        X_pred = algorithm.predict(data_in)
+        X_pred = algorithm.predict(data_in, self._metric_acc)
 
         # QUESTION: This removes only the test_data_in/validation_data_in, I think in general more is removed. Was this intentional?
         if self.remove_history:
