@@ -87,3 +87,5 @@ from recpack.datasets.recsys_challenge import RecsysChallenge2015
 from recpack.datasets.retail_rocket import RetailRocket
 from recpack.datasets.thirty_music_sessions import ThirtyMusicSessions
 from recpack.datasets.million_song_dataset import MillionSongDataset, TasteProfile
+from recpack.datasets.amazon import AmazonDataset
+from recpack.datasets.yelp import YelpOpenDataset
