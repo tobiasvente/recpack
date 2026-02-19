@@ -34,7 +34,7 @@ class YelpOpenDataset(Dataset):
     """Name of the column in the DataFrame that contains item identifiers."""
     RATING_IX = "stars"
     """Name of the column in the DataFrame that contains the rating a user gave to the item."""
-    TIMESTAMP_IX = "date"
+    TIMESTAMP_IX = "timestamp"
     """Name of the column in the DataFrame that contains time of interaction in seconds since epoch."""
 
     DATASETURL = "https://business.yelp.com/external-assets/files/Yelp-JSON.zip"
@@ -50,6 +50,11 @@ class YelpOpenDataset(Dataset):
 
     REMOTE_FILENAME = "yelp_academic_dataset_review.json"
     """Name of the file containing user ratings in the tar file."""
+
+    def __init__(self, path: str = "data", filename: str = None, use_default_filters=True):
+        if filename and not filename.endswith(".json"):
+            filename = filename + ".json"
+        Dataset.__init__(self, path=path, filename=filename, use_default_filters=use_default_filters)
 
     @property
     def DEFAULT_FILENAME(self) -> str:
@@ -87,8 +92,11 @@ class YelpOpenDataset(Dataset):
 
         req = urllib.request.Request(self.DATASETURL, headers=headers)
 
-        with urllib.request.urlopen(req) as response, open(os.path.join(self.path, self.REMOTE_ZIPNAME), "wb") as out:
-            out.write(response.read())
+        try:
+            with urllib.request.urlopen(req) as response, open(os.path.join(self.path, self.REMOTE_ZIPNAME), "wb") as out:
+                out.write(response.read())
+        except:
+            raise RuntimeError("Failed to fetch the dataset from the Yelp site.")
 
         # Extract the tarfile which contains the rating file
         with zipfile.ZipFile(os.path.join(self.path, self.REMOTE_ZIPNAME), "r") as zip_ref:
@@ -99,8 +107,6 @@ class YelpOpenDataset(Dataset):
             tar_ref.extractall(path=self.path, members=[tar_ref.getmember(self.REMOTE_FILENAME)])
 
         # rename the ratings file
-        if not self.filename.endswith(".json"):
-            self.filename = self.filename + ".json"
         os.rename(os.path.join(self.path, self.REMOTE_FILENAME), self.file_path)
 
         # delete the zip file and folder containing the tar file
@@ -130,9 +136,8 @@ class YelpOpenDataset(Dataset):
         processed = []
         for chunk in chunks:
             dt = pd.to_datetime(chunk["date"], utc=True)
-            chunk["epoch"] = dt.astype("int64") // 10**9
+            chunk[self.TIMESTAMP_IX] = dt.astype("int64") // 10**9
             chunk.drop(columns=["review_id", "date", "useful", "funny", "cool", "text"], inplace=True)
-            chunk.rename(columns={"epoch": self.TIMESTAMP_IX}, inplace=True)
             processed.append(chunk)
 
         # concatenate the chunks to form a pandas dataframe
