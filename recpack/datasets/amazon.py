@@ -77,6 +77,8 @@ class AmazonDataset(Dataset):
 
     def __init__(self, category: Category, path: str = "data", filename: str = None, use_default_filters=True):
         self.REMOTE_FILENAME = category.value
+        if filename and not filename.endswith(".csv"):
+            filename = filename + ".csv"
         Dataset.__init__(self, path=path, filename=filename, use_default_filters=use_default_filters)
 
     @property
@@ -107,14 +109,23 @@ class AmazonDataset(Dataset):
         Downloads the zipfile, and extracts the ratings file to `self.file_path`
         """
         # Download the gzip into the data directory
-        _fetch_remote(
-            f"{self.DATASETURL}/{self.REMOTE_FILENAME}.gz", os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz")
-        )
+        try:
+            _fetch_remote(
+                f"{self.DATASETURL}/{self.REMOTE_FILENAME}.gz", os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz")
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to remotely fetch dataset: {e}")
 
         # Extract the ratings file which we will use
         with gzip.open(os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz"), "rb") as f_in:
             with open(f"{self.path}/{self.REMOTE_FILENAME}", "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
+
+        # rename the ratings file
+        os.rename(os.path.join(self.path, self.REMOTE_FILENAME), self.file_path)
+
+        # delete the gzip file
+        os.remove(os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz"))
 
     def _load_dataframe(self) -> pd.DataFrame:
         """Load the raw dataset from file, and return it as a pandas DataFrame.

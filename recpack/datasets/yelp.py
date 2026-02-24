@@ -95,8 +95,8 @@ class YelpOpenDataset(Dataset):
         try:
             with urllib.request.urlopen(req) as response, open(os.path.join(self.path, self.REMOTE_ZIPNAME), "wb") as out:
                 out.write(response.read())
-        except:
-            raise RuntimeError("Failed to fetch the dataset from the Yelp site.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to fetch the dataset from the Yelp site: {e}")
 
         # Extract the tarfile which contains the rating file
         with zipfile.ZipFile(os.path.join(self.path, self.REMOTE_ZIPNAME), "r") as zip_ref:
