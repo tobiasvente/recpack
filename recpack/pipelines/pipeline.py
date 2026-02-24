@@ -168,7 +168,7 @@ class Pipeline(object):
         if isinstance(algorithm, TorchMLAlgorithm):
             algorithm.fit(training_data, self.validation_data, self._metric_acc)
         else:
-            algorithm.fit(training_data, self._metric_entries)
+            algorithm.fit(training_data, self._metric_acc)
         return algorithm
 
     def _predict_and_postprocess(self, algorithm: Algorithm, data_in: InteractionMatrix) -> csr_matrix:
