@@ -64,6 +64,8 @@ class PipelineBuilder(object):
         self.post_processor = Postprocessor()
 
         self.remove_history = True
+        self.optimisation_all_metrics = False
+        self.incremental_save = False
 
         self.results_directory = f"{self.base_path}/{self.folder_name}"
 
@@ -181,6 +183,35 @@ class PipelineBuilder(object):
             raise ValueError(f"metric {metric} could not be resolved.")
 
         self.optimisation_metric = OptimisationMetricEntry(metric, K, minimise)
+
+    def set_incremental_save(self, value: bool = True) -> None:
+        """Toggle whether intermediate results are appended to disk during the run.
+
+        When enabled, validation trial results are appended to
+        ``optimisation_results.jsonl`` and final test metrics are appended to
+        ``results.jsonl`` in the configured ``results_directory``. This protects
+        against losing partial results if the pipeline terminates before
+        completion.
+
+        :param value: If True, save intermediate results incrementally. Defaults to True.
+        :type value: bool
+        """
+        self.incremental_save = value
+
+    def set_optimisation_all_metrics(self, value: bool = True) -> None:
+        """Toggle whether all configured metrics are calculated for every
+        validation run during hyperparameter optimisation.
+
+        When enabled, the optimisation results will contain a column for each
+        configured metric, in addition to the optimisation metric. The selection
+        of the best hyperparameter combination is unaffected: it still uses the
+        optimisation metric only.
+
+        :param value: If True, calculate all metrics for validation runs.
+            Defaults to True.
+        :type value: bool
+        """
+        self.optimisation_all_metrics = value
 
     def set_full_training_data(self, train_data: InteractionMatrix):
         """Set the full_training dataset.
@@ -330,4 +361,6 @@ class PipelineBuilder(object):
             self.optimisation_metric if hasattr(self, "optimisation_metric") else None,
             self.post_processor,
             self.remove_history,
+            self.optimisation_all_metrics,
+            self.incremental_save,
         )
