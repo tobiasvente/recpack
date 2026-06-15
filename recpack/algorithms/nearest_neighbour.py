@@ -111,6 +111,46 @@ def compute_pearson_similarity(X: csr_matrix) -> csr_matrix:
     return compute_cosine_similarity(X)
 
 
+def compute_jaccard_similarity(X: csr_matrix) -> csr_matrix:
+    """Compute the Jaccard similarity between items.
+
+    Jaccard similarity between item i and j is computed as:
+
+    .. math::
+        sim(i,j) = \\frac{|U_i \\cap U_j|}{|U_i \\cup U_j|}
+
+    The input matrix is converted to binary before computing similarities,
+    so ratings or interaction weights are ignored.
+
+    Self similarity is removed.
+
+    :param X: user x item matrix with scores per user, item pair.
+    :type X: csr_matrix
+    :return: item-item similarity matrix
+    :rtype: csr_matrix
+    """
+    # convert score matrix to binary interaction matrix
+    X = to_binary(X)
+
+    intersection = X.T @ X
+    intersection = intersection.tocoo()
+
+    item_counts = X.sum(axis=0).A[0]
+
+    unions = item_counts[intersection.row] + item_counts[intersection.col] - intersection.data
+
+    item_jaccard_similarities = csr_matrix((intersection.data / unions, (intersection.row, intersection.col)),
+                                           shape=intersection.shape)
+
+    # remove self similarity
+    item_jaccard_similarities.setdiag(0)
+
+    # remove explicit 0 on the diagonal
+    item_jaccard_similarities.eliminate_zeros()
+
+    return item_jaccard_similarities
+
+
 class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     """Item K Nearest Neighbours model.
 
@@ -120,7 +160,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
 
     For each item the K most similar items are computed during fit.
     Similarity parameter decides how to compute the similarity between two items.
-    Supported options are: ``"cosine"`` and ``"conditional_probability"``
+    Supported options are: ``"cosine"``, ``"conditional_probability"`` and ``"jaccard"``
 
     Cosine similarity between item i and j is computed as
 
@@ -140,6 +180,14 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     .. math::
         sim(i,j) = \\frac{Freq(i \\land j)}{Freq(i)}
 
+    Jaccard similarity between item i and j is computed as:
+
+    .. math::
+        sim(i,j) = \\frac{|U_i \\cap U_j|}{|U_i \\cup U_j|}
+
+    Where U_i is the set of users that have interacted with item i.
+    Ratings are not taken into account, only whether a user has interacted with an item or not.
+
     If sim_normalize is True, the scores are normalized per predictive item,
     making sure the sum of each row in the similarity matrix is 1.
 
@@ -148,7 +196,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
         Defaults to 200
     :type K: int, optional
     :param similarity: Which similarity measure to use,
-        can be one of ["cosine", "conditional_probability"], defaults to "cosine"
+        can be one of ["cosine", "conditional_probability", "jaccard"], defaults to "cosine"
     :type similarity: str, optional
     :param pop_discount: Power applied to the comparing item in the denominator,
         to discount contributions of very popular items.
@@ -166,7 +214,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     :raises ValueError: If an unsupported similarity measure is passed.
     """
 
-    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability"]
+    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability", "jaccard"]
     """The supported similarity options"""
 
     def __init__(
@@ -213,6 +261,8 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
             item_similarities = compute_cosine_similarity(X)
         elif self.similarity == "conditional_probability":
             item_similarities = compute_conditional_probability(X, self.pop_discount)
+        elif self.similarity == "jaccard":
+            item_similarities = compute_jaccard_similarity(X)
 
         item_similarities = get_top_K_values(item_similarities, K=self.K)
 
@@ -237,13 +287,16 @@ class ItemPNN(ItemKNN):
     For each item K neighbours are selected either uniformly or based on the empirical
     distribution of the items (or a softmax thereof).
     Similarity parameter decides how to compute the similarity between two items.
-    Supported options are: ``"cosine"`` and ``"conditional_probability"``
+    Supported options are: ``"cosine"``, ``"conditional_probability"`` and ``"jaccard"``
 
     - Cosine similarity between item i and j is computed as
       the ``count(i and j) / (count(i)*count(j))``.
     - Conditional probablity of item i with j is computed
       as ``count(i and j) / (count(i))``.
       Note that this is a non-symmetric similarity measure.
+    - Jaccard similarity between item i and j is computed as
+      ``count(i and j) / count(i or j)``.
+      Ratings are not taken into account; only whether a user has interacted with an item or not.
 
     If sim_normalize is True, the scores are normalized per predictive item,
     making sure the sum of each row in the similarity matrix is 1.
@@ -253,7 +306,7 @@ class ItemPNN(ItemKNN):
         Defaults to 200
     :type K: int, optional
     :param similarity: Which similarity measure to use,
-        can be one of ["cosine", "conditional_probability"], defaults to "cosine"
+        can be one of ["cosine", "conditional_probability", "jaccard"], defaults to "cosine"
     :type similarity: str, optional
     :param pop_discount: Power applied to the comparing item in the denominator,
         to discount contributions of very popular items.
@@ -341,6 +394,8 @@ class ItemPNN(ItemKNN):
             item_similarities = compute_cosine_similarity(X)
         elif self.similarity == "conditional_probability":
             item_similarities = compute_conditional_probability(X, self.pop_discount)
+        elif self.similarity == "jaccard":
+            item_similarities = compute_jaccard_similarity(X)
 
         self.pdf_ = self._compute_pdf(self.pdf, item_similarities)
 
