@@ -142,10 +142,10 @@ class AmazonDataset(Dataset):
         df = pd.read_csv(
             self.file_path,
             dtype={
-                self.ITEM_IX: str,
-                self.USER_IX: str,
+                self.ITEM_IX: "string",
+                self.USER_IX: "string",
                 self.RATING_IX: np.int64,
-                self.TIMESTAMP_IX: np.float64,
+                self.TIMESTAMP_IX: np.int64,
             },
         )
 

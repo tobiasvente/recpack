@@ -129,15 +129,15 @@ class YelpOpenDataset(Dataset):
             self.file_path,
             lines=True,
             chunksize=100_000,
-            dtype={self.ITEM_IX: str, self.USER_IX: str, self.RATING_IX: np.int64},
+            dtype={self.ITEM_IX: "string", self.USER_IX: "string", self.RATING_IX: np.int64},
         )
 
-        # convert datetime into seconds since epoch and drop non-relevant columns
+        # convert datetime into seconds since epoch and keep relevant columns
         processed = []
         for chunk in chunks:
             dt = pd.to_datetime(chunk["date"], utc=True)
             chunk[self.TIMESTAMP_IX] = dt.astype("int64") // 10**9
-            chunk.drop(columns=["review_id", "date", "useful", "funny", "cool", "text"], inplace=True)
+            chunk = chunk[[self.ITEM_IX, self.USER_IX, self.RATING_IX, self.TIMESTAMP_IX]]
             processed.append(chunk)
 
         # concatenate the chunks to form a pandas dataframe

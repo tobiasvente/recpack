@@ -76,7 +76,7 @@ def test_create_dataframe(require_network, category, dataset_path, dataset_filen
     assert isinstance(df[dataset.USER_IX].dtype,StringDtype)
     assert isinstance(df[dataset.ITEM_IX].dtype,StringDtype)
     assert df[dataset.RATING_IX].dtype == np.int64
-    assert df[dataset.TIMESTAMP_IX].dtype == np.float64
+    assert df[dataset.TIMESTAMP_IX].dtype == np.int64
 
 @pytest.mark.network
 @pytest.mark.parametrize("category", AmazonDataset.Category, ids=lambda x: x.value)
