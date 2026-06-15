@@ -17,6 +17,7 @@ from recpack.matrix import to_binary
 from recpack.algorithms.nearest_neighbour import (
     ItemPNN,
     compute_conditional_probability,
+    compute_dice_similarity,
     compute_jaccard_similarity,
     compute_pearson_similarity,
 )
@@ -209,6 +210,33 @@ def test_item_knn_jaccard(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
+def test_item_knn_dice(data):
+    algo = ItemKNN(K=2, similarity="dice")
+
+    algo.fit(data)
+    # data matrix looks like
+    # 0 1 1
+    # 1 0 1
+    # 1 1 1
+
+    # item counts = [2, 2, 3]
+    # intersections =
+    # 2 1 2
+    # 1 2 2
+    # 2 2 3
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 1 / 2, 4 / 5],
+            [1 / 2, 0, 4 / 5],
+            [4 / 5, 4 / 5, 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
 @pytest.mark.parametrize(
     "K, pdf",
     [
@@ -252,6 +280,17 @@ def test_item_pnn_uniform_larger(larger_matrix):
 
 def test_item_pnn_jaccard(data):
     algo = ItemPNN(K=1, similarity="jaccard", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_dice(data):
+    algo = ItemPNN(K=1, similarity="dice", pdf="empirical")
 
     algo.fit(data)
 
@@ -337,6 +376,26 @@ def test_compute_jaccard_similarity():
         [0, 2 / 3, 1 / 3],
         [2 / 3, 0, 2 / 3],
         [1 / 3, 2 / 3, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_dice_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_dice_similarity(X)
+
+    expected_similarity = [
+        [0, 4 / 5, 1 / 2],
+        [4 / 5, 0, 4 / 5],
+        [1 / 2, 4 / 5, 0],
     ]
 
     np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
