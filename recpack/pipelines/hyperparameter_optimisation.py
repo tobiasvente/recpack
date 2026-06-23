@@ -9,6 +9,41 @@ from typing import Dict, Any, List
 
 from sklearn.model_selection import ParameterGrid
 
+import importlib.resources
+import sys
+import types
+
+def ensure_pkg_resources_compat() -> None:
+    """
+    Ensure compatibility with packages that still depend on ``pkg_resources``.
+
+    Hyperopt 0.2.7 imports ``pkg_resources.resource_string()``, even though
+    ``pkg_resources`` has been deprecated and may no longer be available in
+    newer Python and setuptools environments. To avoid requiring the legacy
+    package, this function installs a minimal shim module when
+    ``pkg_resources`` cannot be imported.
+
+    The shim implements only the functionality currently required by
+    Hyperopt, namely ``pkg_resources.resource_string()``, using
+    ``importlib.resources`` as the modern replacement.
+
+    If a real ``pkg_resources`` installation is available, no action is
+    taken.
+    """
+    try:
+        import pkg_resources
+    except ModuleNotFoundError:
+        pkg_resources = types.ModuleType("pkg_resources")
+
+        def resource_string(package_or_requirement, resource_name):
+            package_name = str(package_or_requirement) #.split()[0]
+            resource = importlib.resources.files(package_name).joinpath(resource_name)
+            return resource.read_bytes()
+
+        pkg_resources.resource_string = resource_string
+        sys.modules["pkg_resources"] = pkg_resources
+
+ensure_pkg_resources_compat()
 
 class OptimisationInfo:
     """Base class for Optimisation Info."""
