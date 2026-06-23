@@ -35,8 +35,7 @@ def ensure_pkg_resources_compat() -> None:
     except ModuleNotFoundError:
         pkg_resources = types.ModuleType("pkg_resources")
 
-        def resource_string(package_or_requirement, resource_name):
-            package_name = str(package_or_requirement) #.split()[0]
+        def resource_string(package_name, resource_name):
             resource = importlib.resources.files(package_name).joinpath(resource_name)
             return resource.read_bytes()
 
