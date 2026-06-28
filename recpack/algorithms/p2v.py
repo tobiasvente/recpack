@@ -335,7 +335,7 @@ def window(sequences: Iterator[Tuple[int, list]], window_size: int) -> np.ndarra
     :return: Windowed sequences of items
     :rtype: np.ndarray
     """
-    padded_sequences = [[np.NAN] * window_size + list(s) + [np.NAN] * window_size for uid, s in sequences]
+    padded_sequences = [[np.nan] * window_size + list(s) + [np.nan] * window_size for uid, s in sequences]
     w = [
         w.tolist()
         for sequence in padded_sequences

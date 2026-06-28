@@ -12,7 +12,8 @@ setup(
     python_requires=">=3.8",
     packages=find_packages(),
     install_requires=[
-        "numpy>=1.21.2, ==1.*",
+        "numpy>=1.21.2, ==1.*; python_version < '3.13'",
+        "numpy>=2.1, ==2.*; python_version >= '3.13'",
         "scipy>=1.6.0, ==1.*",
         "scikit-learn>=1.1.1, ==1.*",
         "pandas>=2.1.4, ==2.*",

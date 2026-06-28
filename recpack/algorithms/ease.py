@@ -102,7 +102,7 @@ class EASE(ItemSimilarityMatrixAlgorithm):
         """
 
         K = min(
-            int(self.density * np.product(self.similarity_matrix_.shape)),
+            int(self.density * np.prod(self.similarity_matrix_.shape)),
             self.similarity_matrix_.nnz,
         )
         self.similarity_matrix_.data[np.argpartition(abs(self.similarity_matrix_.data), -K)[0:-K]] = 0
