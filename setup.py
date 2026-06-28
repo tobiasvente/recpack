@@ -24,7 +24,9 @@ setup(
     ],
     extras_require={
         "doc": ["sphinx==4.*", "sphinx-rtd-theme==1.*"],
-        "test": ["pytest>=6.2.4, ==6.*", "pytest-cov>=2.12.1, ==2.*"],
+        "test": ["pytest>=6.2.4, ==6.*; python_version < '3.14'",
+                "pytest>=8.4.0, ==8.*; python_version >= '3.14'",
+                "pytest-cov>=2.12.1, ==2.*"],
     },
     entry_points={},
     description=SHORT_DESCRIPTION,

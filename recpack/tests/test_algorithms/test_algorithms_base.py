@@ -45,7 +45,8 @@ def test_check_prediction():
         # Trigger a warning.
         a._check_prediction(X_pred, X)
 
-    with pytest.warns(None):
+    with warnings.catch_warnings():
+        warnings.simplefilter("always")
         a._check_prediction(X, X)
 
 
