@@ -26,6 +26,7 @@ from recpack.pipelines.registries import (
 )
 from recpack.pipelines.hyperparameter_optimisation import HyperoptInfo, GridSearchInfo
 from recpack.postprocessing.postprocessors import Postprocessor
+from recpack.util import get_top_K_ranks
 
 
 logger = logging.getLogger("recpack")
@@ -61,6 +62,70 @@ class MetricAccumulator:
             for k in self.acc[key]:
                 results[key][k] = self.acc[key][k].num_users
         return results
+
+    @property
+    def results(self):
+        results = []
+        for algorithm_name, algorithm_metrics in self.acc.items():
+            for metric_name, metric in algorithm_metrics.items():
+                metric_results = metric.results.copy()
+                metric_results.insert(0, "metric", metric_name)
+                metric_results.insert(0, "algorithm", algorithm_name)
+                results.append(metric_results)
+
+        if not results:
+            return pd.DataFrame(columns=["algorithm", "metric", "score"])
+
+        return pd.concat(results).reset_index(drop=True)
+
+
+class RecommendationAccumulator:
+    """Accumulates final recommendation scores per algorithm."""
+
+    def __init__(self):
+        self.acc = {}
+
+    def add(self, algorithm_name: str, X_pred: csr_matrix) -> None:
+        logger.debug(f"Recommendations stored for algorithm {algorithm_name}")
+        self.acc[algorithm_name] = X_pred.copy()
+
+    def get_recommendations(self, K: Optional[int] = None) -> pd.DataFrame:
+        """Return recommendations in long-form tabular format.
+
+        :param K: The maximum number of recommendations to return per user.
+            If ``None``, all nonzero predictions are returned.
+        :type K: int, optional
+        :return: DataFrame with columns ``algorithm``, ``user_id``,
+            ``item_id``, ``rank`` and ``score``.
+        :rtype: pd.DataFrame
+        """
+        if K is not None and K <= 0:
+            raise ValueError("K should be a positive integer or None.")
+
+        results = []
+        for algorithm_name, X_pred in self.acc.items():
+            ranks = get_top_K_ranks(X_pred, K)
+            users, items = ranks.nonzero()
+            scores = X_pred[users, items].A1
+            recommendations = pd.DataFrame(
+                {
+                    "algorithm": algorithm_name,
+                    "user_id": users,
+                    "item_id": items,
+                    "rank": ranks.data,
+                    "score": scores,
+                }
+            )
+            results.append(recommendations)
+
+        if not results:
+            return pd.DataFrame(columns=["algorithm", "user_id", "item_id", "rank", "score"])
+
+        return (
+            pd.concat(results)
+            .sort_values(["algorithm", "user_id", "rank"])
+            .reset_index(drop=True)
+        )
 
 
 class Pipeline(object):
@@ -129,6 +194,7 @@ class Pipeline(object):
         self.remove_history = remove_history
 
         self._metric_acc = MetricAccumulator()
+        self._recommendation_acc = RecommendationAccumulator()
         # Hyperparameter optimisation results are accumulated
         self._optimisation_results = []
 
@@ -150,6 +216,7 @@ class Pipeline(object):
                 self._train(algorithm, self.full_training_data)
             # Make predictions
             X_pred = self._predict_and_postprocess(algorithm, self.test_data_in)
+            self._recommendation_acc.add(algorithm.identifier, X_pred)
 
             for metric_entry in self.metric_entries:
                 metric_cls = METRIC_REGISTRY.get(metric_entry.name)
@@ -273,6 +340,92 @@ class Pipeline(object):
             self.optimisation_results.to_json(f"{self.results_directory}/optimisation_results.json")
         except AttributeError:
             pass
+
+    def get_metric_results(self) -> pd.DataFrame:
+        return self._metric_acc.results
+
+    def _ensure_visualization_output_directory(self, output_directory: Optional[str] = None) -> str:
+        output_directory = output_directory or self.results_directory
+        os.makedirs(output_directory, exist_ok=True)
+        return output_directory
+
+    def _save_visualization_axis(self, ax, output_path: str) -> None:
+        from matplotlib import pyplot as plt
+
+        ax.figure.savefig(output_path, dpi=120, bbox_inches="tight")
+        plt.close(ax.figure)
+
+    def get_recommendations(self, K: Optional[int] = None) -> pd.DataFrame:
+        if K is None:
+            K_values = [metric_entry.K for metric_entry in self.metric_entries if metric_entry.K is not None]
+            K = max(K_values) if K_values else 10
+
+        return self._recommendation_acc.get_recommendations(K)
+
+    def save_visualization_data(self, K: Optional[int] = None) -> None:
+        if not os.path.exists(self.results_directory):
+            os.mkdir(self.results_directory)
+
+        self.get_metric_results().to_csv(f"{self.results_directory}/metric_details.csv", index=False)
+        self.get_recommendations(K).to_csv(f"{self.results_directory}/recommendations.csv", index=False)
+
+    def save_metric_comparison_plot(
+        self,
+        output_directory: Optional[str] = None,
+        short_names: bool = True,
+        file_format: str = "png",
+    ) -> str:
+        from recpack.visualization import plot_metric_comparison
+
+        output_directory = self._ensure_visualization_output_directory(output_directory)
+        output_path = os.path.join(output_directory, f"metric_comparison.{file_format}")
+        ax = plot_metric_comparison(self.get_metrics(short=short_names), figsize=(8, 4))
+        self._save_visualization_axis(ax, output_path)
+        return output_path
+
+    def save_metric_distribution_plot(
+        self,
+        output_directory: Optional[str] = None,
+        metric: Optional[str] = None,
+        short_names: bool = True,
+        file_format: str = "png",
+    ) -> str:
+        """Save a plot with detailed score distribution for one metric."""
+        from recpack.visualization import plot_metric_distribution
+
+        output_directory = self._ensure_visualization_output_directory(output_directory)
+        output_path = os.path.join(output_directory, f"metric_distribution.{file_format}")
+
+        if metric is None:
+            metric_entry = self.metric_entries[-1]
+            metric = f"{metric_entry.name}_{metric_entry.K}" if metric_entry.K is not None else metric_entry.name
+
+        metric_results = self.get_metric_results()
+        if short_names:
+            metric_results = metric_results.copy()
+            metric_results["algorithm"] = metric_results["algorithm"].map(lambda x: x.split("(")[0])
+
+        ax = plot_metric_distribution(metric_results, metric=metric, figsize=(6, 4))
+        self._save_visualization_axis(ax, output_path)
+        return output_path
+
+    def save_recommendation_popularity_plot(
+        self,
+        output_directory: Optional[str] = None,
+        K: Optional[int] = None,
+        top_n: int = 20,
+        file_format: str = "png",
+    ) -> str:
+        """Save a plot showing the most frequently recommended items."""
+        from recpack.visualization import plot_recommendation_popularity
+
+        output_directory = self._ensure_visualization_output_directory(output_directory)
+        output_path = os.path.join(output_directory, f"recommendation_popularity.{file_format}")
+        ax = plot_recommendation_popularity(self.get_recommendations(K), top_n=top_n, figsize=(6, 4))
+        self._save_visualization_axis(ax, output_path)
+        return output_path
+
+
 
     def get_num_users(self) -> int:
         """Get the amount of users used in the evaluation.
