@@ -30,6 +30,9 @@ from recpack.postprocessing.postprocessors import Postprocessor
 
 logger = logging.getLogger("recpack")
 
+FITTING_TIME = "fitting_time"
+INFERENCE_TIME = "inference_time"
+
 
 class MetricAccumulator:
     """Accumulates metrics and
@@ -51,10 +54,7 @@ class MetricAccumulator:
         results = defaultdict(dict)
         for key in self.acc:
             for k in self.acc[key]:
-                if hasattr(self.acc[key][k], "value"):
-                    results[key][k] = self.acc[key][k].value
-                else:
-                    results[key][k] = self.acc[key][k]
+                results[key][k] = self.acc[key][k].value
         return results
 
     @property
@@ -62,8 +62,7 @@ class MetricAccumulator:
         results = defaultdict(dict)
         for key in self.acc:
             for k in self.acc[key]:
-                if hasattr(self.acc[key][k], "num_users"):
-                    results[key][k] = self.acc[key][k].num_users
+                results[key][k] = self.acc[key][k].num_users
         return results
 
 
@@ -138,6 +137,10 @@ class Pipeline(object):
 
     def run(self):
         """Runs the pipeline."""
+
+        # metrics that need to be evaluated after making predictions
+        evaluation_metric_entries = [entry for entry in self.metric_entries if entry.name not in (FITTING_TIME, INFERENCE_TIME)]
+
         for algorithm_entry in tqdm(self.algorithm_entries):
             # Check whether we need to optimize hyperparameters
             if algorithm_entry.optimise:
@@ -152,10 +155,12 @@ class Pipeline(object):
                 self._train(algorithm, self.validation_training_data)
             else:
                 self._train(algorithm, self.full_training_data)
+            self._metric_acc.add(algorithm.fit_time, algorithm.identifier, FITTING_TIME)
             # Make predictions
             X_pred = self._predict_and_postprocess(algorithm, self.test_data_in)
+            self._metric_acc.add(algorithm.predict_time, algorithm.identifier, INFERENCE_TIME)
 
-            for metric_entry in self.metric_entries:
+            for metric_entry in evaluation_metric_entries:
                 metric_cls = METRIC_REGISTRY.get(metric_entry.name)
                 if metric_entry.K is not None:
                     metric = metric_cls(K=metric_entry.K)
@@ -164,15 +169,21 @@ class Pipeline(object):
                 metric.calculate(self.test_data_out.binary_values, X_pred)
                 self._metric_acc.add(metric, algorithm.identifier, metric.name)
 
+        # add fitting time and inference time to metric entries if not already present
+        existing_metric_names = {entry.name for entry in self.metric_entries}
+        for timing_name in (FITTING_TIME, INFERENCE_TIME):
+            if timing_name not in existing_metric_names:
+                self.metric_entries.append(MetricEntry(timing_name, None))
+
     def _train(self, algorithm: Algorithm, training_data: InteractionMatrix) -> Algorithm:
         if isinstance(algorithm, TorchMLAlgorithm):
-            algorithm.fit(training_data, self.validation_data, self._metric_acc)
+            algorithm.fit(training_data, self.validation_data)
         else:
-            algorithm.fit(training_data, self._metric_acc)
+            algorithm.fit(training_data)
         return algorithm
 
     def _predict_and_postprocess(self, algorithm: Algorithm, data_in: InteractionMatrix) -> csr_matrix:
-        X_pred = algorithm.predict(data_in, self._metric_acc)
+        X_pred = algorithm.predict(data_in)
 
         # QUESTION: This removes only the test_data_in/validation_data_in, I think in general more is removed. Was this intentional?
         if self.remove_history:

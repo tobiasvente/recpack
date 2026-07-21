@@ -12,13 +12,11 @@ from hyperopt import hp
 import numpy as np
 import pytest
 
-from hyperopt import hp
-import numpy as np
-import pytest
-
 from recpack.postprocessing.filters import PostFilter
 from recpack.pipelines import GridSearchInfo, HyperoptInfo
+from recpack.pipelines.pipeline import MetricAccumulator
 from recpack.pipelines.pipeline_builder import AlgorithmEntry
+from recpack.metrics.base import TimeMetric
 
 
 class MockFilter(PostFilter):
@@ -38,7 +36,7 @@ def test_pipeline(pipeline_builder):
     metrics = pipeline.get_metrics()
     assert len(metrics) == len(pipeline.algorithm_entries)
 
-    assert len(metrics[list(metrics.keys())[0]]) == len(pipeline.metric_entries)
+    assert metrics.shape[1] == len(pipeline.metric_entries)
 
 
 def test_pipeline_save_metrics(pipeline_builder):
@@ -68,6 +66,14 @@ def test_pipeline_save_metrics_w_optimisation(pipeline_builder_optimisation):
                 call(f"{pipeline_builder_optimisation.results_directory}/optimisation_results.json"),
             ]
         )
+
+
+def test_metric_accumulator_time_metrics():
+    accumulator = MetricAccumulator()
+    accumulator.add(TimeMetric(1.25), "algorithm", "fitting_time")
+
+    assert accumulator.metrics["algorithm"]["fitting_time"] == 1.25
+    assert accumulator.num_users["algorithm"]["fitting_time"] == 0
 
 
 @pytest.mark.parametrize(

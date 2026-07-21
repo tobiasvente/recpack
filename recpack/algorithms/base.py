@@ -24,6 +24,7 @@ from recpack.algorithms.stopping_criterion import (
 )
 from recpack.algorithms.util import get_batches, get_users, sample_rows
 from recpack.matrix import InteractionMatrix, to_csr_matrix, Matrix
+from recpack.metrics.base import TimeMetric
 from recpack.util import get_top_K_values
 
 
@@ -41,6 +42,8 @@ class Algorithm(BaseEstimator):
 
     def __init__(self):
         super().__init__()
+        self._fit_time = None
+        self._predict_time = None
 
     @property
     def name(self):
@@ -59,6 +62,22 @@ class Algorithm(BaseEstimator):
         """
         paramstring = ",".join((f"{k}={v}" for k, v in self.get_params().items()))
         return self.name + "(" + paramstring + ")"
+
+    @property
+    def fit_time(self):
+        """Elapsed time of the most recent successful fit, in seconds.
+
+        Returns ``None`` until :meth:`fit` has completed successfully.
+        """
+        return self._fit_time
+
+    @property
+    def predict_time(self):
+        """Elapsed time of the most recent successful prediction, in seconds.
+
+        Returns ``None`` until :meth:`predict` has completed successfully.
+        """
+        return self._predict_time
 
     def __str__(self):
         return self.name
@@ -162,7 +181,7 @@ class Algorithm(BaseEstimator):
             if not X.has_timestamps:
                 raise ValueError(f"{self.name} requires timestamp information in the InteractionMatrix.")
 
-    def fit(self, X: Matrix, metric_acc=None) -> "Algorithm":
+    def fit(self, X: Matrix) -> "Algorithm":
         """Fit the model to the input interaction matrix.
 
         After fitting the model will be ready to use for prediction.
@@ -178,8 +197,6 @@ class Algorithm(BaseEstimator):
 
         :param X: The interactions to fit the model on.
         :type X: Matrix
-        :param metric_acc: Optional metric accumulator object to store fitting time.
-        :type metric_acc: MetricAccumulator
         :return: **self**, fitted algorithm
         :rtype: Algorithm
         """
@@ -191,11 +208,10 @@ class Algorithm(BaseEstimator):
         end = time.time()
         fitting_time = end - start
         logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
-        if metric_acc is not None:
-            metric_acc.add(f"{fitting_time:.3}s", self.identifier, "fitting_time")
+        self._fit_time = TimeMetric(fitting_time)
         return self
 
-    def predict(self, X: Matrix, metric_acc=None) -> csr_matrix:
+    def predict(self, X: Matrix) -> csr_matrix:
         """Predicts scores, given the interactions in X
 
         Recommends items for each nonzero user in the X matrix.
@@ -209,8 +225,6 @@ class Algorithm(BaseEstimator):
 
         :param X: interactions to predict from.
         :type X: Matrix
-        :param metric_acc: optional metric accumulator object to store inference time.
-        :type metric_acc: MetricAccumulator
         :return: The recommendation scores in a sparse matrix format.
         :rtype: csr_matrix
         """
@@ -225,8 +239,7 @@ class Algorithm(BaseEstimator):
         end = time.time()
         inference_time = end - start
         logger.info(f"{self.name} inference complete - Took {inference_time:.3}s")
-        if metric_acc is not None:
-            metric_acc.add(f"{inference_time:.3}s", self.identifier, "inference_time")
+        self._predict_time = TimeMetric(inference_time)
         return X_pred
 
 
@@ -655,7 +668,7 @@ class TorchMLAlgorithm(Algorithm):
         with open(self.filename, "wb") as f:
             torch.save(self.model_, f)
 
-    def fit(self, X: Matrix, validation_data: Tuple[Matrix, Matrix], metric_acc=None) -> "TorchMLAlgorithm":
+    def fit(self, X: Matrix, validation_data: Tuple[Matrix, Matrix]) -> "TorchMLAlgorithm":
         """Fit the parameters of the model.
 
         Interaction Matrix X will be used for training,
@@ -678,8 +691,6 @@ class TorchMLAlgorithm(Algorithm):
         Once the model has been fit, the best model is stored to disk,
         if specified during init.
 
-        :param metric_acc: Optional metric accumulator object to store fitting time.
-        :type metric_acc: MetricAccumulator
         :return: **self**, fitted algorithm
         :rtype: TorchMLAlgorithm
         """
@@ -741,8 +752,7 @@ class TorchMLAlgorithm(Algorithm):
         end = time.time()
         fitting_time = end - start
         logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
-        if metric_acc is not None:
-            metric_acc.add(f"{fitting_time:.3}s", self.identifier, "fitting_time")
+        self._fit_time = TimeMetric(fitting_time)
 
         return self
 

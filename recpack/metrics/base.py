@@ -319,3 +319,15 @@ class FittedMetric(Metric, BaseEstimator):
 
     def fit(self, X: csr_matrix):
         pass
+
+
+class TimeMetric(Metric):
+    """A measured elapsed time, expressed in seconds."""
+
+    def __init__(self, elapsed_time: float):
+        super().__init__()
+        self.value_ = elapsed_time
+
+    def _calculate(self, y_true, y_pred_top_K):
+        "The metric value, in this case elapsed time, cannot be calculated and should instead be assigned manually"
+        return
