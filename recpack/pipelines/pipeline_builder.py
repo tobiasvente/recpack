@@ -64,6 +64,7 @@ class PipelineBuilder(object):
         self.post_processor = Postprocessor()
 
         self.remove_history = True
+        self.incremental_save = False
 
         self.results_directory = f"{self.base_path}/{self.folder_name}"
 
@@ -230,6 +231,18 @@ class PipelineBuilder(object):
 
         self.test_data = test_data
 
+    def set_incremental_save(self, value: bool = True) -> None:
+        """Enable or disable incremental saving of results.
+
+        When enabled, validation and test metric results are appended to
+        JSONL files in the results directory as soon as they are obtained,
+        so partial results survive an unexpected termination of the pipeline.
+
+        :param value: True to enable incremental saving, defaults to True
+        :type value: bool, optional
+        """
+        self.incremental_save = value
+
     def set_data_from_scenario(self, scenario: Scenario):
         """Set the train, validation and test data based by
         extracting them from the scenario."""
@@ -330,4 +343,5 @@ class PipelineBuilder(object):
             self.optimisation_metric if hasattr(self, "optimisation_metric") else None,
             self.post_processor,
             self.remove_history,
+            self.incremental_save,
         )
