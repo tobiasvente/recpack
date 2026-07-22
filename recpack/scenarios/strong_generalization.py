@@ -5,6 +5,8 @@
 #   Lien Michiels
 #   Robin Verachtert
 
+from typing import Optional
+
 from recpack.matrix import InteractionMatrix
 from recpack.scenarios import Scenario
 from recpack.scenarios.splitters import FractionInteractionSplitter, StrongGeneralizationSplitter
@@ -91,8 +93,21 @@ class StrongGeneralization(Scenario):
         else split without validation data into only a training and test dataset.
     :type validation: boolean, optional
     :param seed: The seed to use for the random components of the splitter.
+        Used as fallback for the per-step seeds below.
         If None, a random seed will be used. Defaults to None
     :type seed: int, optional
+    :param train_test_seed: Seed for the assignment of users to
+        the training or test group.
+        Defaults to None, which falls back to ``seed``.
+    :type train_test_seed: int, optional
+    :param validation_seed: Seed for the validation splits (both the
+        assignment of training users to the validation group,
+        and the validation fold-in/hold-out split).
+        Defaults to None, which falls back to ``seed``.
+    :type validation_seed: int, optional
+    :param test_split_seed: Seed for the test fold-in/hold-out split.
+        Defaults to None, which falls back to ``seed``.
+    :type test_split_seed: int, optional
     """
 
     def __init__(
@@ -101,13 +116,27 @@ class StrongGeneralization(Scenario):
         frac_interactions_in: float = 0.8,
         validation: bool = False,
         seed: int = None,
+        train_test_seed: Optional[int] = None,
+        validation_seed: Optional[int] = None,
+        test_split_seed: Optional[int] = None,
     ):
-        super().__init__(validation=validation, seed=seed)
+        super().__init__(
+            validation=validation,
+            seed=seed,
+            train_test_seed=train_test_seed,
+            validation_seed=validation_seed,
+            test_split_seed=test_split_seed,
+        )
         self.frac_users_train = frac_users_train
         self.frac_interactions_in = frac_interactions_in
 
-        self.strong_gen = StrongGeneralizationSplitter(frac_users_train, seed=self.seed)
-        self.interaction_split = FractionInteractionSplitter(frac_interactions_in, seed=self.seed)
+        self.strong_gen = StrongGeneralizationSplitter(frac_users_train, seed=self.train_test_seed)
+        self.test_interaction_split = FractionInteractionSplitter(frac_interactions_in, seed=self.test_split_seed)
+        self.validation_interaction_split = FractionInteractionSplitter(
+            frac_interactions_in, seed=self.validation_seed
+        )
+        # Kept as an alias for backward compatibility.
+        self.interaction_split = self.test_interaction_split
 
     def _split(self, data: InteractionMatrix) -> None:
         """Splits your data so that a user can only be in one of
@@ -127,6 +156,6 @@ class StrongGeneralization(Scenario):
             (
                 self._validation_data_in,
                 self._validation_data_out,
-            ) = self.interaction_split.split(validation_data)
+            ) = self.validation_interaction_split.split(validation_data)
 
-        self._test_data_in, self._test_data_out = self.interaction_split.split(test_data)
+        self._test_data_in, self._test_data_out = self.test_interaction_split.split(test_data)

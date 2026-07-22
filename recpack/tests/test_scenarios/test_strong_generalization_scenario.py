@@ -116,3 +116,85 @@ def test_strong_generalization_split_seed(data_m, frac_users_train, frac_interac
 
     assert scenario_1.test_data_in.num_interactions == scenario_2.test_data_in.num_interactions
     assert scenario_1.test_data_out.num_interactions == scenario_2.test_data_out.num_interactions
+
+
+def _interaction_pairs(data_m):
+    """The (user, item) pairs of an InteractionMatrix as a set."""
+    return set(zip(data_m.indices[0], data_m.indices[1]))
+
+
+def test_strong_generalization_separate_seeds_train_test_fixed_test_split_varies(data_m):
+    scenario_1 = scenarios.StrongGeneralization(0.7, 0.5, train_test_seed=42, test_split_seed=1)
+    scenario_2 = scenarios.StrongGeneralization(0.7, 0.5, train_test_seed=42, test_split_seed=2)
+
+    scenario_1.split(data_m)
+    scenario_2.split(data_m)
+
+    # Same train_test_seed -> identical training data and identical test users.
+    assert _interaction_pairs(scenario_1.full_training_data) == _interaction_pairs(scenario_2.full_training_data)
+
+    test_users_1 = scenario_1.test_data_in.active_users | scenario_1.test_data_out.active_users
+    test_users_2 = scenario_2.test_data_in.active_users | scenario_2.test_data_out.active_users
+    assert test_users_1 == test_users_2
+
+    # The test interactions are the same, ...
+    test_pairs_1 = _interaction_pairs(scenario_1.test_data_in) | _interaction_pairs(scenario_1.test_data_out)
+    test_pairs_2 = _interaction_pairs(scenario_2.test_data_in) | _interaction_pairs(scenario_2.test_data_out)
+    assert test_pairs_1 == test_pairs_2
+
+    # ... but a different test_split_seed assigns them differently
+    # to the fold-in and hold-out sets.
+    assert _interaction_pairs(scenario_1.test_data_in) != _interaction_pairs(scenario_2.test_data_in)
+
+
+def test_strong_generalization_separate_seeds_train_test_varies_test_split_fixed(data_m):
+    scenario_1 = scenarios.StrongGeneralization(0.7, 0.5, train_test_seed=1, test_split_seed=42)
+    scenario_2 = scenarios.StrongGeneralization(0.7, 0.5, train_test_seed=2, test_split_seed=42)
+
+    scenario_1.split(data_m)
+    scenario_2.split(data_m)
+
+    # A different train_test_seed changes which users are in training.
+    train_users_1 = set(scenario_1.full_training_data.indices[0])
+    train_users_2 = set(scenario_2.full_training_data.indices[0])
+    assert train_users_1 != train_users_2
+
+
+def test_strong_generalization_only_seed_still_reproducible(data_m):
+    # Backward compatibility: only passing seed fully determines every split.
+    scenario_1 = scenarios.StrongGeneralization(0.7, 0.5, validation=True, seed=42)
+    scenario_2 = scenarios.StrongGeneralization(0.7, 0.5, validation=True, seed=42)
+
+    scenario_1.split(data_m)
+    scenario_2.split(data_m)
+
+    assert _interaction_pairs(scenario_1.full_training_data) == _interaction_pairs(scenario_2.full_training_data)
+    assert _interaction_pairs(scenario_1.validation_training_data) == _interaction_pairs(
+        scenario_2.validation_training_data
+    )
+    assert _interaction_pairs(scenario_1.validation_data_in) == _interaction_pairs(scenario_2.validation_data_in)
+    assert _interaction_pairs(scenario_1.validation_data_out) == _interaction_pairs(scenario_2.validation_data_out)
+    assert _interaction_pairs(scenario_1.test_data_in) == _interaction_pairs(scenario_2.test_data_in)
+    assert _interaction_pairs(scenario_1.test_data_out) == _interaction_pairs(scenario_2.test_data_out)
+
+
+def test_strong_generalization_validation_seed_isolates_validation(data_m):
+    scenario_1 = scenarios.StrongGeneralization(
+        0.7, 0.5, validation=True, train_test_seed=42, test_split_seed=42, validation_seed=1
+    )
+    scenario_2 = scenarios.StrongGeneralization(
+        0.7, 0.5, validation=True, train_test_seed=42, test_split_seed=42, validation_seed=2
+    )
+
+    scenario_1.split(data_m)
+    scenario_2.split(data_m)
+
+    # Train and test data are unchanged.
+    assert _interaction_pairs(scenario_1.full_training_data) == _interaction_pairs(scenario_2.full_training_data)
+    assert _interaction_pairs(scenario_1.test_data_in) == _interaction_pairs(scenario_2.test_data_in)
+    assert _interaction_pairs(scenario_1.test_data_out) == _interaction_pairs(scenario_2.test_data_out)
+
+    # A different validation_seed produces a different validation training set.
+    assert _interaction_pairs(scenario_1.validation_training_data) != _interaction_pairs(
+        scenario_2.validation_training_data
+    )
