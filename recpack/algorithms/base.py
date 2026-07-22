@@ -217,6 +217,99 @@ class Algorithm(BaseEstimator):
         return X_pred
 
 
+class TimeAwareAlgorithm(Algorithm):
+    """Base class for algorithms that use timestamp information.
+
+    Instead of a binary csr matrix, the :meth:`_fit` and :meth:`_predict`
+    methods of child classes receive the full
+    :class:`recpack.matrix.InteractionMatrix`,
+    such that per interaction timestamps can be used
+    during training and prediction.
+
+    Input is validated instead of converted:
+    a TypeError is raised when the input is not an InteractionMatrix,
+    and a ValueError is raised when the InteractionMatrix
+    has no timestamp information.
+
+    Usually a new algorithm will have to
+    implement just the :meth:`_fit` and :meth:`_predict` methods.
+    """
+
+    def _fit(self, X: InteractionMatrix):
+        """Stub implementation for fitting an algorithm.
+
+        Will be called by the :meth:`fit` wrapper.
+        Child classes should implement this function.
+
+        :param X: User-item interaction matrix, with timestamps,
+            to fit the model to.
+        :type X: InteractionMatrix
+        :raises NotImplementedError: Implement this method in the child class
+        """
+        raise NotImplementedError("Please implement _fit")
+
+    def _predict(self, X: InteractionMatrix) -> csr_matrix:
+        """Stub for predicting scores to users
+
+        Will be called by the :meth:`predict` wrapper.
+        Child classes should implement this function.
+
+        :param X: User-item interaction matrix, with timestamps,
+            used as input to predict.
+        :type X: InteractionMatrix
+        :raises NotImplementedError: Implement this method in the child class
+        :return: Predictions made for all active users in X
+        :rtype: csr_matrix
+        """
+        raise NotImplementedError("Please implement _predict")
+
+    def _transform_fit_input(self, X: Matrix) -> InteractionMatrix:
+        """Check the training data is an InteractionMatrix with timestamps,
+        and pass it through unchanged.
+
+        :param X: User-item interaction matrix to fit the model to
+        :type X: Matrix
+        :return: The user-item interaction matrix, with timestamp information.
+        :rtype: InteractionMatrix
+        """
+        self._assert_is_interaction_matrix(X)
+        self._assert_has_timestamps(X)
+        return X
+
+    def _transform_predict_input(self, X: Matrix) -> InteractionMatrix:
+        """Check the input of predict is an InteractionMatrix with timestamps,
+        and pass it through unchanged.
+
+        :param X: User-item interaction matrix used as input to predict
+        :type X: Matrix
+        :return: The user-item interaction matrix, with timestamp information.
+        :rtype: InteractionMatrix
+        """
+        self._assert_is_interaction_matrix(X)
+        self._assert_has_timestamps(X)
+        return X
+
+    def _check_prediction(self, X_pred: csr_matrix, X: InteractionMatrix) -> None:
+        """Checks that the predictions matches expectations
+
+        Checks implemented:
+
+        - Check that all users with history got at least 1 recommendation
+
+        For failing checks a warning is printed.
+
+        :param X_pred: Predictions made for all active users in X
+        :type X_pred: csr_matrix
+        :param X: User-item interaction matrix used as input to predict
+        :type X: InteractionMatrix
+        """
+        users = X.active_users
+        predicted_users = set(X_pred.nonzero()[0])
+        missing = users.difference(predicted_users)
+        if len(missing) > 0:
+            warnings.warn(f"{self.name} failed to recommend any items " f"for {len(missing)} users")
+
+
 class ItemSimilarityMatrixAlgorithm(Algorithm):
     """Base algorithm for algorithms that fit an item to item similarity model
 

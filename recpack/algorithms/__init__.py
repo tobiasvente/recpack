@@ -46,6 +46,7 @@ or for comparison in experiments.
 
     Popularity
     Random
+    TimeAwarePopularity
 
 Item Similarity Algorithms
 ----------------------------
@@ -238,12 +239,13 @@ Use these to simplify certain tasks (such as batching) when creating a new algor
 
 from recpack.algorithms.base import (
     Algorithm,
+    TimeAwareAlgorithm,
     TopKItemSimilarityMatrixAlgorithm,
     TorchMLAlgorithm,
     ItemSimilarityMatrixAlgorithm,
     FactorizationAlgorithm,
 )
-from recpack.algorithms.baseline import Popularity, Random
+from recpack.algorithms.baseline import Popularity, Random, TimeAwarePopularity
 from recpack.algorithms.factorization import (
     NMF,
     SVD,
