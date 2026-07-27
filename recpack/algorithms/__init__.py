@@ -255,7 +255,7 @@ from recpack.algorithms.factorization_item_similarity import (
 from recpack.algorithms.ease import EASE
 from recpack.algorithms.slim import SLIM
 
-from recpack.algorithms.nearest_neighbour import ItemKNN, ItemPNN
+from recpack.algorithms.nearest_neighbour import ItemKNN, ItemPNN, UserKNN
 from recpack.algorithms.kunn import KUNN
 from recpack.algorithms.bprmf import BPRMF
 
@@ -287,5 +287,3 @@ from recpack.algorithms.time_aware_item_knn import (
 )
 
 from recpack.algorithms.sequential_rules import SequentialRules
-
-from recpack.algorithms.userknn import UserKNN
