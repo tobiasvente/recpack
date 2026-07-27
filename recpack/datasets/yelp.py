@@ -83,23 +83,41 @@ class YelpOpenDataset(Dataset):
 
         Downloads the zipfile, and extracts the ratings file to `self.file_path`
         """
-        # Download the zipfile into the data directory
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        }
+        os.makedirs(self.path, exist_ok=True)
+        archive_path = os.path.join(self.path, self.REMOTE_ZIPNAME)
 
-        req = urllib.request.Request(self.DATASETURL, headers=headers)
+        # Yelp may reject automated downloads with HTTP 403. In that case users
+        # can download the archive in a browser and place it at archive_path.
+        if not os.path.exists(archive_path):
+            partial_path = archive_path + ".part"
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/zip,application/octet-stream,*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://business.yelp.com/data/resources/open-dataset/",
+            }
+            request = urllib.request.Request(self.DATASETURL, headers=headers)
 
-        try:
-            with urllib.request.urlopen(req) as response, open(os.path.join(self.path, self.REMOTE_ZIPNAME), "wb") as out:
-                out.write(response.read())
-        except Exception as e:
-            raise RuntimeError(f"Failed to fetch the dataset from the Yelp site: {e}")
+            try:
+                with urllib.request.urlopen(request) as response, open(partial_path, "wb") as output:
+                    shutil.copyfileobj(response, output, length=1024 * 1024)
+                os.replace(partial_path, archive_path)
+            except Exception as error:
+                if os.path.exists(partial_path):
+                    os.remove(partial_path)
+                raise RuntimeError(
+                    "Automatic download of the Yelp Open Dataset failed. "
+                    "Open https://business.yelp.com/data/resources/open-dataset/ "
+                    f"in a browser, download the JSON archive, save it as '{archive_path}', "
+                    "and call fetch_dataset() again."
+                ) from error
 
         # Extract the tarfile which contains the rating file
-        with zipfile.ZipFile(os.path.join(self.path, self.REMOTE_ZIPNAME), "r") as zip_ref:
+        with zipfile.ZipFile(archive_path, "r") as zip_ref:
             zip_ref.extract(f"{self.REMOTE_FOLDERNAME}/{self.REMOTE_TARNAME}", self.path)
 
         # Extract the ratings file which we will use
@@ -110,7 +128,7 @@ class YelpOpenDataset(Dataset):
         os.rename(os.path.join(self.path, self.REMOTE_FILENAME), self.file_path)
 
         # delete the zip file and folder containing the tar file
-        os.remove(os.path.join(self.path, self.REMOTE_ZIPNAME))
+        os.remove(archive_path)
         shutil.rmtree(os.path.join(self.path, self.REMOTE_FOLDERNAME))
 
     def _load_dataframe(self) -> pd.DataFrame:

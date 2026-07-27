@@ -36,6 +36,8 @@ class AmazonDataset(Dataset):
 
     DATASETURL = "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/benchmark/0core/rating_only/"
 
+    MANUAL_DOWNLOAD_LINK = "https://amazon-reviews-2023.github.io/"
+
     REMOTE_FILENAME = ""
     """Name of the file containing user reviews on the Amazon server."""
 
@@ -108,16 +110,24 @@ class AmazonDataset(Dataset):
 
         Downloads the zipfile, and extracts the ratings file to `self.file_path`
         """
-        # Download the gzip into the data directory
-        try:
-            _fetch_remote(
-                f"{self.DATASETURL}/{self.REMOTE_FILENAME}.gz", os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz")
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to remotely fetch dataset: {e}")
+        archive_url = f"{self.DATASETURL}/{self.REMOTE_FILENAME}.gz"
+        archive_path = os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz")
+
+        # A failed automatic download can be completed manually by placing the
+        # category archive at archive_path and calling fetch_dataset() again.
+        if not os.path.exists(archive_path):
+            try:
+                _fetch_remote(archive_url, archive_path)
+            except Exception as error:
+                raise RuntimeError(
+                    "Automatic download of the Amazon Reviews 2023 dataset "
+                    "failed. Download the category archive manually from "
+                    f"'{archive_url}' or {self.MANUAL_DOWNLOAD_LINK}, save it as '{archive_path}', and call "
+                    "fetch_dataset() again."
+                ) from error
 
         # Extract the ratings file which we will use
-        with gzip.open(os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz"), "rb") as f_in:
+        with gzip.open(archive_path, "rb") as f_in:
             with open(f"{self.path}/{self.REMOTE_FILENAME}", "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
@@ -125,7 +135,7 @@ class AmazonDataset(Dataset):
         os.rename(os.path.join(self.path, self.REMOTE_FILENAME), self.file_path)
 
         # delete the gzip file
-        os.remove(os.path.join(self.path, f"{self.REMOTE_FILENAME}.gz"))
+        os.remove(archive_path)
 
     def _load_dataframe(self) -> pd.DataFrame:
         """Load the raw dataset from file, and return it as a pandas DataFrame.
