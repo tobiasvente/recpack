@@ -27,6 +27,7 @@ from recpack.algorithms import (
     Prod2Vec,
     Prod2VecClustered,
     ItemPNN,
+    LightGCN,
 )
 
 
@@ -74,6 +75,7 @@ def test_check_fit_complete(X_in):
         RecVAE,
         MultVAE,
         BPRMF,
+        LightGCN,
         Random,
         NMFItemToItem,
         NMF,
@@ -96,6 +98,7 @@ def test_seed_is_set_consistently_None(algo):
         RecVAE,
         MultVAE,
         BPRMF,
+        LightGCN,
         Random,
         NMFItemToItem,
         NMF,
@@ -145,7 +148,7 @@ def test_assert_has_timestamps(algo_class, matrix_sessions):
 
 @pytest.mark.parametrize(
     "algo_class",
-    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy],
+    [RecVAE, MultVAE, BPRMF, LightGCN, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy],
 )
 def test_sampled_validation(algo_class, larger_mat):
     N_SAMPLES = 50
