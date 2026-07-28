@@ -506,7 +506,10 @@ class TorchMLAlgorithm(Algorithm):
     def _load_best(self):
         """Load the best model from temp file"""
         self.best_model.seek(0)
-        self.model_ = torch.load(self.best_model)
+        # weights_only=False is required since torch 2.6 to unpickle
+        # full model objects. The file was written by this process in
+        # _save_best, so it is trusted.
+        self.model_ = torch.load(self.best_model, weights_only=False)
 
     def _evaluate(self, val_in: Matrix, val_out: Matrix) -> None:
         """Perform evaluation step
@@ -628,11 +631,15 @@ class TorchMLAlgorithm(Algorithm):
     def load(self, filename):
         """Load torch model from file.
 
+        Only load models from trusted sources: the file is unpickled
+        (``weights_only=False``), which can execute arbitrary code
+        embedded in a malicious file.
+
         :param filename: File to load the model from
         :type filename: str
         """
         with open(filename, "rb") as f:
-            self.model_ = torch.load(f)
+            self.model_ = torch.load(f, weights_only=False)
 
     def save(self):
         """Save the current model to disk.
