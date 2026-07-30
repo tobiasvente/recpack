@@ -7,13 +7,13 @@
 
 import logging
 from typing import List, Tuple
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_array
 
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import torch.optim as optim
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import numpy as np
 
 from recpack.algorithms.base import TorchMLAlgorithm
@@ -152,7 +152,7 @@ class MultVAE(TorchMLAlgorithm):
         """
         return self.max_beta if self.steps >= self.anneal_steps else self.steps / self.anneal_steps
 
-    def _init_model(self, X: csr_matrix):
+    def _init_model(self, X: csr_array):
         """
         Initialize Torch model and optimizer.
 
@@ -172,7 +172,7 @@ class MultVAE(TorchMLAlgorithm):
 
         self.optimizer = optim.Adam(self.model_.parameters(), lr=self.learning_rate)
 
-    def _train_epoch(self, train_data: csr_matrix):
+    def _train_epoch(self, train_data: csr_array):
         """
         Perform one training epoch.
         Data is processed in batches of self.batch_size users.
@@ -227,16 +227,16 @@ class MultVAE(TorchMLAlgorithm):
 
         return loss
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         active_users = X[users]
 
@@ -244,7 +244,7 @@ class MultVAE(TorchMLAlgorithm):
 
         out_tensor, _, _ = self.model_(in_tensor)
 
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         result[users] = out_tensor.detach().cpu().numpy()
 
         return result.tocsr()

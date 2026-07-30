@@ -9,8 +9,8 @@ import warnings
 from typing import Optional
 
 import numpy as np
-from scipy.sparse import diags
-from scipy.sparse import csr_matrix
+from scipy.sparse import diags_array
+from scipy.sparse import csr_array
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import Normalizer
 
@@ -19,7 +19,7 @@ from recpack.algorithms.util import invert, to_binary
 from recpack.util import get_top_K_values
 
 
-def compute_conditional_probability(X: csr_matrix, pop_discount: float = 0) -> csr_matrix:
+def compute_conditional_probability(X: csr_array, pop_discount: float = 0) -> csr_array:
     """Compute conditional probability like similarity.
 
     Computation using equation (3) from the original ItemKNN paper.
@@ -39,7 +39,7 @@ def compute_conditional_probability(X: csr_matrix, pop_discount: float = 0) -> c
         sim(i,j) = \\frac{Freq(i \\land j)}{Freq(i)}
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :param pop_discount: Parameter defining popularity discount. Defaults to 0
     :type pop_discount: float, Optional.
     """
@@ -48,7 +48,7 @@ def compute_conditional_probability(X: csr_matrix, pop_discount: float = 0) -> c
     co_mat = to_binary(X).T @ X
 
     # Compute the inverse of the item frequencies
-    A = invert(diags(to_binary(X).sum(axis=0).A[0]).tocsr())
+    A = invert(diags_array(to_binary(X).sum(axis=0)).tocsr())
 
     if pop_discount:
         # This has all item similarities
@@ -66,15 +66,15 @@ def compute_conditional_probability(X: csr_matrix, pop_discount: float = 0) -> c
     return item_cond_prob_similarities
 
 
-def compute_cosine_similarity(X: csr_matrix) -> csr_matrix:
+def compute_cosine_similarity(X: csr_array) -> csr_array:
     """Compute the cosine similarity between the items in the matrix.
 
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     # X.T otherwise we are doing a user KNN
     item_cosine_similarities = cosine_similarity(X.T, dense_output=False)
@@ -84,24 +84,24 @@ def compute_cosine_similarity(X: csr_matrix) -> csr_matrix:
     return item_cosine_similarities
 
 
-def compute_pearson_similarity(X: csr_matrix) -> csr_matrix:
+def compute_pearson_similarity(X: csr_array) -> csr_array:
     """Compute the pearson correlation as a similarity between each item in the matrix.
 
     Self similarity is removed.
     When computing similarity, the avg of nonzero entries per user is used.
 
     :param X: Rating or psuedo rating matrix.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: similarity matrix.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
 
     if (X == 1).sum() == X.nnz:
         raise ValueError("Pearson similarity can not be computed on a binary matrix.")
 
-    count_per_item = (X > 0).sum(axis=0).A
+    count_per_item = (X > 0).sum(axis=0)
 
-    avg_per_item = X.sum(axis=0).A.astype(float)
+    avg_per_item = X.sum(axis=0).astype(float)
 
     avg_per_item[count_per_item > 0] = avg_per_item[count_per_item > 0] / count_per_item[count_per_item > 0]
 
@@ -201,7 +201,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
         # Sim_normalize takes precedence.
         self.normalize_sim = normalize_sim
 
-    def _fit(self, X: csr_matrix) -> None:
+    def _fit(self, X: csr_array) -> None:
         """Fit a cosine similarity matrix from item to item"""
 
         transformer = Normalizer(norm="l1", copy=False)
@@ -312,7 +312,7 @@ class ItemPNN(ItemKNN):
         np.random.seed(seed)
         self.seed = seed
 
-    def _compute_pdf(self, pdf: str, sim_matrix: csr_matrix) -> np.ndarray:
+    def _compute_pdf(self, pdf: str, sim_matrix: csr_array) -> np.ndarray:
         # TODO Outside of the class maybe?
         sim_matrix = sim_matrix.toarray()
         if pdf == "empirical":
@@ -329,7 +329,7 @@ class ItemPNN(ItemKNN):
 
         return p
 
-    def _fit(self, X: csr_matrix) -> None:
+    def _fit(self, X: csr_array) -> None:
         """Fit a cosine similarity matrix from item to item"""
 
         transformer = Normalizer(norm="l1", copy=False)
@@ -353,24 +353,24 @@ class ItemPNN(ItemKNN):
 
         self.similarity_matrix_ = item_similarities
 
-    # def _predict(self, X: csr_matrix) -> csr_matrix:
+    # def _predict(self, X: csr_array) -> csr_array:
     #     pass
 
 
-def get_K_values(X: csr_matrix, K: int, pdf: np.ndarray) -> csr_matrix:
+def get_K_values(X: csr_array, K: int, pdf: np.ndarray) -> csr_array:
     """Select K values random values for every row in X,
     sampled according to the probabilities in pdf.
     All other values in the row are set to zero.
 
     :param X: Matrix from which we will select K values in every row.
-    :type X: csr_matrix
+    :type X: csr_array
     :param K: Amount of values to select.
     :type K: int
     :param pdf: np.ndarray of probabilities of items in X, given another item.
         Rows should sum to 1.
     :type pdf: np.ndarray
     :return: Matrix with K values per row.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     items = np.arange(0, X.shape[1], dtype=int)
 
@@ -393,5 +393,5 @@ def get_K_values(X: csr_matrix, K: int, pdf: np.ndarray) -> csr_matrix:
         I.extend(selected_K)
         V.extend([1] * K)
 
-    data_K = csr_matrix((V, (U, I)), shape=X.shape)
+    data_K = csr_array((V, (U, I)), shape=X.shape)
     return data_K.multiply(X)

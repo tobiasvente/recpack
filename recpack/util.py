@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 logger = logging.getLogger("recpack")
 
@@ -42,22 +42,22 @@ def df_to_sparse(df, item_ix, user_ix, value_ix=None, shape=None):
 
     if shape is None:
         shape = df[user_ix].max() + 1, df[item_ix].max() + 1
-    sparse_matrix = csr_matrix((values, indices), shape=shape, dtype=values.dtype)
+    sparse_matrix = csr_array((values, indices), shape=shape, dtype=values.dtype)
 
     return sparse_matrix
 
 
-def get_top_K_ranks(X: csr_matrix, K: Optional[int] = None) -> csr_matrix:
+def get_top_K_ranks(X: csr_array, K: Optional[int] = None) -> csr_array:
     """Returns a matrix of ranks assigned to the largest K values in X.
 
     Selects K largest values for every row in X and assigns a rank to each.
 
     :param X: Matrix from which we will select K values in every row.
-    :type X: csr_matrix
+    :type X: csr_array
     :param K: Amount of values to select.
     :type K: int, optional
     :return: Matrix with K values per row.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     U, I, V = [], [], []
     for row_ix, (le, ri) in enumerate(zip(X.indptr[:-1], X.indptr[1:])):
@@ -72,23 +72,23 @@ def get_top_K_ranks(X: csr_matrix, K: Optional[int] = None) -> csr_matrix:
                 I.append(col_ix)
                 V.append(rank + 1)
 
-    X_top_K = csr_matrix((V, (U, I)), shape=X.shape)
+    X_top_K = csr_array((V, (U, I)), shape=X.shape)
 
     return X_top_K
 
 
-def get_top_K_values(X: csr_matrix, K: Optional[int] = None) -> csr_matrix:
+def get_top_K_values(X: csr_array, K: Optional[int] = None) -> csr_array:
     """Returns a matrix of only the K largest values for every row in X.
 
     Selects the top-K items for every user (which is equal to the K nearest neighbours.)
     In case of a tie for the last position, the item with the largest index of the tied items is used.
 
     :param X: Matrix from which we will select K values in every row.
-    :type X: csr_matrix
+    :type X: csr_array
     :param K: Amount of values to select.
     :type K: int, optional
     :return: Matrix with K values per row.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     top_K_ranks = get_top_K_ranks(X, K)
     top_K_ranks[top_K_ranks > 0] = 1  # ranks to binary
@@ -96,13 +96,13 @@ def get_top_K_values(X: csr_matrix, K: Optional[int] = None) -> csr_matrix:
     return top_K_ranks.multiply(X)  # elementwise multiplication
 
 
-def to_binary(X: csr_matrix) -> csr_matrix:
+def to_binary(X: csr_array) -> csr_array:
     """Converts a matrix to binary by setting all non-zero values to 1.
 
     :param X: Matrix to convert to binary.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: Binary matrix.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     X_binary = X.astype(bool).astype(X.dtype)
 

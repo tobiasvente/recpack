@@ -9,7 +9,7 @@ import logging
 from typing import Tuple
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 from tqdm.auto import tqdm
 
 import torch
@@ -105,12 +105,12 @@ class WeightedMatrixFactorization(Algorithm):
 
         self.loss = torch.nn.MSELoss()
 
-    def _fit(self, X: csr_matrix) -> None:
+    def _fit(self, X: csr_array) -> None:
         """Calculate the user- and item-factors which will approximate X
             after applying a dot-product.
 
         :param X: Sparse user-item matrix which will be used to fit the algorithm.
-        :type X: csr_matrix
+        :type X: csr_array
         """
         self.num_users, self.num_items = X.shape
 
@@ -139,25 +139,25 @@ class WeightedMatrixFactorization(Algorithm):
         self.user_factors_ = torch.zeros(self.num_users, self.num_components, device=self.device)
         self.user_factors_[self.user_id_map_, :] = user_factors
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Prediction scores are calculated as the dot-product of
             the recomputed user-factors and the item-factors.
 
         :param X: Sparse user-item matrix which will be used to do the predictions;
             only for set of users with interactions will recommendations be generated.
-        :type X: csr_matrix
+        :type X: csr_array
         :return: User-item matrix with the prediction scores as values.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         U_conf = self._generate_confidence(X)
         U_user_factors = self._least_squares(U_conf, self.item_factors_, (self.num_users, self.num_components))
 
-        score_matrix = csr_matrix((U_user_factors @ self.item_factors_.T).detach().cpu().numpy())
+        score_matrix = csr_array((U_user_factors @ self.item_factors_.T).detach().cpu().numpy())
 
         self._check_prediction(score_matrix, X)
         return score_matrix
 
-    def _generate_confidence(self, r: csr_matrix) -> csr_matrix:
+    def _generate_confidence(self, r: csr_array) -> csr_array:
         """
         Generate the confidence matrix as described in the paper.
         This can be calculated in different ways:
@@ -168,11 +168,11 @@ class WeightedMatrixFactorization(Algorithm):
         For this reason C-1 will be the result of this function.
         Important is that it will impact the least squares calculation.
         :param r: User-item matrix which the calculations are based on.
-        :type r: csr_matrix
+        :type r: csr_array
         :return: User-item matrix converted with the confidence values.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
-        result = csr_matrix(r, copy=True)
+        result = csr_array(r, copy=True)
         if self.confidence_scheme == "minimal":
             result.data = self.alpha * result.data
         elif self.confidence_scheme == "log-scaling":
@@ -180,19 +180,19 @@ class WeightedMatrixFactorization(Algorithm):
 
         return result
 
-    def _eliminate_empty_users(self, X: csr_matrix) -> csr_matrix:
+    def _eliminate_empty_users(self, X: csr_array) -> csr_array:
         nonzero_users = list(set(X.nonzero()[0]))
 
         self.user_id_map_ = np.array(nonzero_users)
 
         return X[nonzero_users, :]
 
-    def _least_squares(self, C: csr_matrix, Y: torch.Tensor, other_factor_dim: Tuple[int, int]) -> torch.Tensor:
+    def _least_squares(self, C: csr_array, Y: torch.Tensor, other_factor_dim: Tuple[int, int]) -> torch.Tensor:
         """Calculate the one factor matrix based on the confidence matrix and
         the other factor matrix with the least squares algorithm.
 
         :param C: (Transposed) Confidence matrix.
-        :type C: csr_matrix
+        :type C: csr_array
         :param Y: Factor matrix used to calculate the other factor.
         :type Y: torch.Tensor
         :param other_factor_dim: Dimension of the factor to be calculated.

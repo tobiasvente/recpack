@@ -7,7 +7,7 @@
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms import SLIM
 
@@ -30,7 +30,7 @@ def data():
     values = [1] * 9
     users = [0, 0, 1, 1, 2, 2, 2, 3, 3]
     items = [0, 2, 0, 2, 0, 1, 2, 0, 2]
-    data = csr_matrix((values, (users, items)), shape=(5, 3))
+    data = csr_array((values, (users, items)), shape=(5, 3))
     return data
 
 
@@ -52,7 +52,7 @@ def data_negatives():
     values = [1] * 8
     users = [0, 0, 1, 1, 2, 2, 3, 3]
     items = [0, 1, 0, 1, 2, 3, 2, 3]
-    data = csr_matrix((values, (users, items)), shape=(4, 4))
+    data = csr_array((values, (users, items)), shape=(4, 4))
     return data
 
 
@@ -62,7 +62,7 @@ def test_slim(data):
     algo.fit(data)
 
     # Make sure the predictions "make sense"
-    _in = csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    _in = csr_array(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
     result = algo.predict(_in)
 
     # Item 0 is closer to item 2
@@ -77,7 +77,7 @@ def test_slim_negatives(data_negatives):
     algo.fit(data_negatives)
 
     # Make sure the predictions "make sense"
-    _in = csr_matrix(([1, 1, 1, 1], ([0, 1, 2, 3], [0, 1, 2, 3])), shape=(4, 4))
+    _in = csr_array(([1, 1, 1, 1], ([0, 1, 2, 3], [0, 1, 2, 3])), shape=(4, 4))
     result = algo.predict(_in)
 
     # No similarity between item 0 and 2

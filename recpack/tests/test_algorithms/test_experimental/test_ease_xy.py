@@ -31,7 +31,7 @@ def data():
     values = [1] * 9
     users = [0, 0, 1, 1, 2, 2, 2, 3, 3]
     items = [0, 2, 0, 2, 0, 1, 2, 0, 2]
-    data = scipy.sparse.csr_matrix((values, (users, items)), shape=(5, 3))
+    data = scipy.sparse.csr_array((values, (users, items)), shape=(5, 3))
     return data
 
 
@@ -53,7 +53,7 @@ def data_y():
     values = [1] * 5
     users = [0, 1, 2, 2, 3]
     items = [2, 2, 1, 2, 2]
-    d = scipy.sparse.csr_matrix((values, (users, items)), shape=(5, 3))
+    d = scipy.sparse.csr_array((values, (users, items)), shape=(5, 3))
     return d
 
 
@@ -63,7 +63,7 @@ def test_XY_same_data(data):
     algo.fit(data, data)
 
     # Make sure the predictions "make sense"
-    _in = scipy.sparse.csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    _in = scipy.sparse.csr_array(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
     result = algo.predict(_in)
 
     np.testing.assert_almost_equal(result[2, 0], 1, decimal=1)
@@ -76,7 +76,7 @@ def test_XY(data, data_y):
     algo.fit(data, data_y)
 
     # Make sure the predictions "make sense"
-    _in = scipy.sparse.csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    _in = scipy.sparse.csr_array(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
     result = algo.predict(_in)
 
     np.testing.assert_almost_equal(result[2, 0], 0, decimal=1)

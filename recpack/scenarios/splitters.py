@@ -11,7 +11,7 @@ from typing import List, Set, Tuple, Union
 import math
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 from tqdm.auto import tqdm
 
 from recpack.matrix import InteractionMatrix
@@ -357,8 +357,8 @@ class MostRecentSplitter(Splitter):
         return data_in, data_out
 
 
-def csr_row_set_nz_to_val(csr: csr_matrix, row, value=0):
+def csr_row_set_nz_to_val(csr: csr_array, row, value=0):
     """Set all nonzero elements to the given value. Useful to set to 0 mostly."""
-    if not isinstance(csr, csr_matrix):
+    if not isinstance(csr, csr_array):
         raise ValueError("Matrix given must be of CSR format.")
     csr.data[csr.indptr[row] : csr.indptr[row + 1]] = value

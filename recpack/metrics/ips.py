@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 from recpack.metrics.base import FittedMetric, ElementwiseMetricK
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import numpy as np
 
 
@@ -40,7 +40,7 @@ class IPSMetric(FittedMetric):
         self.item_prob_ = None
         self.ip_cap = 10000
 
-    def fit(self, X: csr_matrix):
+    def fit(self, X: csr_array):
         """Fit the propensities for the X dataset.
 
         We make the strong assumption that each user
@@ -56,10 +56,10 @@ class IPSMetric(FittedMetric):
         :param X: The interactions to base the propensity computation on.
                     Suggested to use the labels you are trying to predict as value,
                     since that is the target.
-        :type X: scipy.sparse.csr_matrix
+        :type X: scipy.sparse.csr_array
         """
         # Compute vector with propensities
-        self.item_prob_ = X.sum(axis=0) / X.sum()
+        self.item_prob_ = X.sum(axis=0)[None, :] / X.sum()
         self.inverse_propensities = 1 / self.item_prob_
         self.inverse_propensities[self.inverse_propensities == np.inf] = 0
 
@@ -81,7 +81,7 @@ class IPSHitRateK(ElementwiseMetricK, IPSMetric):
     def __init__(self, K):
         super().__init__(K)
 
-    def _calculate(self, y_true: csr_matrix, y_pred_top_K: csr_matrix) -> None:
+    def _calculate(self, y_true: csr_array, y_pred_top_K: csr_array) -> None:
         assert self.item_prob_ is not None
 
         hits = compute_hits(y_true, y_pred_top_K)

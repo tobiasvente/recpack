@@ -7,7 +7,7 @@
 
 import numpy
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.metrics import PercentileRanking
 
@@ -16,12 +16,12 @@ def test_perc_ranking():
     values = [1, 1, 1, 1]
     users = [0, 0, 0, 0]
     items = [0, 2, 3, 7]
-    y_true = csr_matrix((values, (users, items)), shape=(2, 10))
+    y_true = csr_array((values, (users, items)), shape=(2, 10))
 
     values_pred = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     users_pred = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     items_pred = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    y_pred = csr_matrix((values_pred, (users_pred, items_pred)), shape=(1, 10))
+    y_pred = csr_array((values_pred, (users_pred, items_pred)), shape=(1, 10))
 
     pr = PercentileRanking()
     pr.calculate(y_true, y_pred)
@@ -39,7 +39,7 @@ def test_perc_ranking_sparse(seed):
     num_users = 500
     num_items = 50
     # fmt:off
-    y_true = csr_matrix(
+    y_true = csr_array(
         (
             [1 for i in range(N)],
             (
@@ -51,7 +51,7 @@ def test_perc_ranking_sparse(seed):
 
     y_true[y_true > 0] = 1
 
-    y_pred = csr_matrix(
+    y_pred = csr_array(
         (
             [numpy.random.rand() for i in range(N)],
             (
@@ -66,7 +66,7 @@ def test_perc_ranking_sparse(seed):
     ranks = {}
     for u in range(num_users):
         ranks[u] = {}
-        for ix, i in enumerate(numpy.flip(numpy.argsort(y_pred[u, :].toarray()[0]))):
+        for ix, i in enumerate(numpy.flip(numpy.argsort(y_pred[u, :].toarray()))):
             ranks[u][i] = ix
 
     numerator = 0

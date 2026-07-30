@@ -11,7 +11,7 @@ import warnings
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 import torch.nn as nn
@@ -21,7 +21,7 @@ from recpack.algorithms.base import TorchMLAlgorithm
 from recpack.algorithms.samplers import PositiveNegativeSampler
 from recpack.algorithms.loss_functions import skipgram_negative_sampling_loss
 from recpack.algorithms.util import get_batches
-from recpack.matrix import InteractionMatrix, Matrix, to_csr_matrix
+from recpack.matrix import InteractionMatrix, Matrix, to_csr_array
 from recpack.util import get_top_K_values
 
 
@@ -230,27 +230,27 @@ class Prod2Vec(TorchMLAlgorithm):
         inactive_items = list(set(range(num_items)).difference(active_items))
         embedding[inactive_items] = 0
 
-        item_cosine_similarity = lil_matrix((num_items, num_items))
+        item_cosine_similarity = lil_array((num_items, num_items))
 
         for batch in get_batches(list(active_items), batch_size=batch_size):
             Y = embedding[batch]
-            item_cosine_similarity_batch = csr_matrix(cosine_similarity(Y, embedding))
+            item_cosine_similarity_batch = csr_array(cosine_similarity(Y, embedding))
 
             item_cosine_similarity[batch] = get_top_K_values(item_cosine_similarity_batch, K)
         # no self similarity, set diagonal to zero
         item_cosine_similarity.setdiag(0)
-        self.similarity_matrix_ = csr_matrix(item_cosine_similarity)
+        self.similarity_matrix_ = csr_array(item_cosine_similarity)
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         scores = X @ self.similarity_matrix_
         return scores
@@ -284,7 +284,7 @@ class Prod2Vec(TorchMLAlgorithm):
         # Remove any NaN valued rows (consequence of windowing)
         positives = positives[~np.isnan(positives).any(axis=1)].astype(int)
 
-        coocc = lil_matrix((X.shape[1], X.shape[1]), dtype=int)
+        coocc = lil_array((X.shape[1], X.shape[1]), dtype=int)
         coocc[positives[:, 0], positives[:, 1]] = 1
         coocc.setdiag(1)
         coocc = coocc.tocsr()
@@ -296,10 +296,10 @@ class Prod2Vec(TorchMLAlgorithm):
 
     def _transform_fit_input(
         self, X: Matrix, validation_data: Tuple[Matrix, Matrix]
-    ) -> Tuple[InteractionMatrix, Tuple[csr_matrix, csr_matrix]]:
+    ) -> Tuple[InteractionMatrix, Tuple[csr_array, csr_array]]:
         self._assert_is_interaction_matrix(X)
         self._assert_has_timestamps(X)
-        return X, to_csr_matrix(validation_data, binary=True)
+        return X, to_csr_array(validation_data, binary=True)
 
 
 class SkipGram(nn.Module):

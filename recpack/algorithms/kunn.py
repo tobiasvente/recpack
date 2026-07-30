@@ -8,7 +8,7 @@
 import logging
 import numpy as np
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from recpack.algorithms import Algorithm
 from recpack.algorithms.util import (
@@ -79,26 +79,26 @@ class KUNN(Algorithm):
         self.Ku = Ku
         self.Ki = Ki
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
         """Calculate the item similarity matrix based on the interactions.
 
         :param X: Sparse binary user-item interaction matrix
             which will be used to fit the algorithm.
         """
 
-        self.training_interactions_ = csr_matrix(X, copy=True)
+        self.training_interactions_ = csr_array(X, copy=True)
         self.knn_i_ = self._fit_item_knn(X)
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Predict recommendations for all nonzero users in the interaction matrix.
 
         Computes a userKNN model, and then predicts based on the combined
         score of user and item similarity.
 
         :param X: Sparse binary user-item matrix which will be used as history.
-        :type X: csr_matrix
+        :type X: csr_array
         :return: User-item matrix with the prediction scores as values.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
 
         # Memorised training interactions are used in `_fit_user_knn` as well
@@ -126,7 +126,7 @@ class KUNN(Algorithm):
         # and 1 / sqrt(count(i))
         item_counts = self.training_interactions_.sum(axis=0)
 
-        user_similarity = csr_matrix(knn_u @ self.training_interactions_.multiply(invert(np.sqrt(item_counts))))
+        user_similarity = csr_array(knn_u @ self.training_interactions_.multiply(invert(np.sqrt(item_counts))[None, :]))
 
         # Compute item similarities
         # Similar trick, 1/sqrt(c(i)) is already included in the item KNN computation.
@@ -135,7 +135,7 @@ class KUNN(Algorithm):
         # Item KNN scores
         # And dividing by sqrt(c(u)), the square root of the user's interactions.
         user_counts = combined_interactions.sum(axis=1)
-        item_similarity = csr_matrix(combined_interactions.multiply(invert(np.sqrt(user_counts))) @ self.knn_i_)
+        item_similarity = csr_array(combined_interactions.multiply(invert(np.sqrt(user_counts))[:, None]) @ self.knn_i_)
 
         similarity = item_similarity + user_similarity
 
@@ -143,14 +143,14 @@ class KUNN(Algorithm):
         # TODO: There is probably a way to optimise computation by not needing to
         # compute the similarities, similar to computation of user_knn.
 
-        scores = lil_matrix(X.shape)
+        scores = lil_array(X.shape)
         scores[users_to_predict] = similarity[users_to_predict]
 
         scores = scores.tocsr()
 
         return scores
 
-    def _fit_item_knn(self, X: csr_matrix) -> csr_matrix:
+    def _fit_item_knn(self, X: csr_array) -> csr_array:
         """
         Helper method to compute the Item KNN, used in the KUNN implementation.
 
@@ -159,16 +159,15 @@ class KUNN(Algorithm):
         user_counts = X.sum(axis=1)
         item_counts = X.sum(axis=0)
 
-        item_to_item_similarity = X.multiply(invert(np.sqrt(user_counts))).multiply(
-            invert(np.sqrt(item_counts))
-        ).T @ X.multiply(invert(np.sqrt(item_counts)))
+        item_weights = invert(np.sqrt(item_counts))[None, :]
+        item_to_item_similarity = X.multiply(invert(np.sqrt(user_counts))[:, None]).multiply(item_weights).T@ X.multiply(item_weights)
 
         # Eliminate self-similarity
         item_to_item_similarity.setdiag(0)
 
         return get_top_K_values(item_to_item_similarity, self.Ki).T
 
-    def _fit_user_knn(self, X: csr_matrix) -> csr_matrix:
+    def _fit_user_knn(self, X: csr_array) -> csr_array:
         """Helper method to compute the User KNN, used in the KUNN implementation.
         The memoized training interactions are used to compute the user similarities.
 
@@ -185,7 +184,7 @@ class KUNN(Algorithm):
         # Turn mask into a column vector
         mask = mask.reshape(mask.shape[0], 1)
         # Select the interactions for nonzero users in mask
-        combined_interactions_selected_users = csr_matrix(combined_interactions.multiply(mask))
+        combined_interactions_selected_users = csr_array(combined_interactions.multiply(mask))
 
         # Compute the interactions that are only in the prediction matrix.
         combined_interactions_only_predict = (
@@ -227,13 +226,13 @@ class KUNN(Algorithm):
         # fmt:off
         similarities = (
             combined_interactions_selected_users.multiply(
-                invert(np.sqrt(pred_user_interaction_counts))
+                invert(np.sqrt(pred_user_interaction_counts))[:, None]
             ).multiply(
                 invert(np.sqrt(item_counts_per_user))
             )
             @
             self.training_interactions_.multiply(
-                invert(np.sqrt(train_user_counts))
+                invert(np.sqrt(train_user_counts))[:, None]
             ).T
         )
         # fmt:on

@@ -9,7 +9,7 @@ import math
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 import torch.nn as nn
 
@@ -31,7 +31,7 @@ def X_true():
     users = [0, 0, 1, 1]
     items = [1, 2, 0, 1]
     values = [1 for i in items]
-    return csr_matrix((values, (users, items)), shape=(2, 3))
+    return csr_array((values, (users, items)), shape=(2, 3))
 
 
 @pytest.fixture(scope="function")
@@ -39,14 +39,14 @@ def X_pred():
     users = [0, 0, 0, 1, 1, 1]
     items = [0, 1, 2, 0, 1, 2]
     scores = [0, 0.3, 0.5, 0.2, 0.4, 0.5]
-    return csr_matrix((scores, (users, items)), shape=(2, 3))
+    return csr_array((scores, (users, items)), shape=(2, 3))
 
 
 def test_warp_loss_wrapper():
 
-    X_true = csr_matrix([[0, 0, 1], [0, 1, 0], [0, 1, 0]])
+    X_true = csr_array([[0, 0, 1], [0, 1, 0], [0, 1, 0]])
 
-    X_pred = csr_matrix([[0.2, 0.2, 0], [0.8, 1, 0.9], [1, 1, 0.95]])
+    X_pred = csr_array([[0.2, 0.2, 0], [0.8, 1, 0.9], [1, 1, 0.95]])
 
     margin = 0.1
     num_negatives = 2

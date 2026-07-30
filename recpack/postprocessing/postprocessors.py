@@ -10,7 +10,7 @@
 import logging
 from typing import List, Optional
 from recpack.postprocessing.filters import PostFilter
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 
 logger = logging.getLogger("recpack")
@@ -45,24 +45,24 @@ class Postprocessor:
         else:
             self.filters.insert(index, _filter)
 
-    def process(self, X_pred: csr_matrix) -> csr_matrix:
+    def process(self, X_pred: csr_array) -> csr_array:
         """
-        :param X_pred: csr_matrix containing recommended user-item pairs.
-        :type X_pred: csr_matrix
-        :return: csr_matrix-object containing the filtered response.
-        :rtype: csr_matrix
+        :param X_pred: csr_array containing recommended user-item pairs.
+        :type X_pred: csr_array
+        :return: csr_array-object containing the filtered response.
+        :rtype: csr_array
         """
         return self.process_many(X_pred)[0]
 
-    def process_many(self, *X_preds: csr_matrix) -> List[csr_matrix]:
+    def process_many(self, *X_preds: csr_array) -> List[csr_array]:
         """
         Process all CSR Matrices passed as arguments.
 
         :param X_preds: The CSR matrices to process
-        :type X_preds: csr_matrix
-        :return: A list of csr_matrix objects in the order
+        :type X_preds: csr_array
+        :return: A list of csr_array objects in the order
             the csr_matrices were passed in.
-        :rtype: List[csr_matrix]
+        :rtype: List[csr_array]
         """
         # TODO Can I improve this?
         for index, X_pred in enumerate(X_preds):

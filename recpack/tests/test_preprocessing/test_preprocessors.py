@@ -249,7 +249,7 @@ def test_session_dataframe_preprocessor_sunny_day(dataframe_with_fixed_timestamp
     # User 1 has 2 sessions, all other users have a single one.
     assert interaction_m.shape[0] == dataframe_with_fixed_timestamps[InteractionMatrix.USER_IX].nunique() + 1
 
-    session_interaction_counts = interaction_m.values.sum(axis=1).T
+    session_interaction_counts = interaction_m.values.sum(axis=1)[None, :]
 
     session_interaction_counts[0, 0] == 5
     session_interaction_counts[0, 1] == 4
@@ -259,7 +259,7 @@ def test_session_dataframe_preprocessor_sunny_day(dataframe_with_fixed_timestamp
     session_interaction_counts[0, 5] == 3
 
     # Check that order is as expected
-    session_unique_interaction_counts = interaction_m.binary_values.sum(axis=1).T
+    session_unique_interaction_counts = interaction_m.binary_values.sum(axis=1)[None, :]
     session_unique_interaction_counts[0, 2] == 1
     session_unique_interaction_counts[0, 5] == 1
 

@@ -8,7 +8,7 @@
 import logging
 from typing import List
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from tqdm.auto import tqdm
 
@@ -143,39 +143,39 @@ class BPRMF(TorchMLAlgorithm):
             batch_size=self.batch_size,
         )
 
-    def _init_model(self, X: csr_matrix):
+    def _init_model(self, X: csr_array):
         num_users, num_items = X.shape
         self.model_ = MFModule(num_users, num_items, num_components=self.num_components).to(self.device)
 
         self.optimizer = optim.Adagrad(self.model_.parameters(), lr=self.learning_rate)
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
 
         user_tensor = torch.LongTensor(users).to(self.device)
         item_tensor = torch.arange(X.shape[1]).to(self.device)
 
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         result[users] = self.model_(user_tensor, item_tensor).detach().cpu().numpy()
 
         return result.tocsr()
 
-    def _train_epoch(self, train_data: csr_matrix):
+    def _train_epoch(self, train_data: csr_array):
         """train a single epoch. Uses sampler to generate samples,
         and loop through them in batches of self.batch_size.
         After each batch, update the parameters according to gradients.
 
         :param train_data: interaction matrix.
-        :type train_data: csr_matrix
+        :type train_data: csr_array
         """
         losses = []
 

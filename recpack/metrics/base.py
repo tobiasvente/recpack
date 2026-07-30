@@ -9,7 +9,7 @@ import logging
 from typing import Tuple
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import pandas as pd
 from sklearn.base import BaseEstimator
 
@@ -40,14 +40,14 @@ class Metric:
     def _calculate(self, y_true, y_pred) -> None:
         raise NotImplementedError()
 
-    def calculate(self, y_true: csr_matrix, y_pred: csr_matrix) -> None:
+    def calculate(self, y_true: csr_array, y_pred: csr_array) -> None:
         """Calculates this metric for all nonzero users in ``y_true``,
         given true labels and predicted scores.
 
         :param y_true: True user-item interactions.
-        :type y_true: csr_matrix
+        :type y_true: csr_array
         :param y_pred: Predicted affinity of users for items.
-        :type y_pred: csr_matrix
+        :type y_pred: csr_array
         """
         y_true, y_pred = self._eliminate_empty_users(y_true, y_pred)
         self._verify_shape(y_true, y_pred)
@@ -84,13 +84,13 @@ class Metric:
 
         return row.flatten(), col.flatten()
 
-    def _verify_shape(self, y_true: csr_matrix, y_pred: csr_matrix) -> bool:
+    def _verify_shape(self, y_true: csr_array, y_pred: csr_array) -> bool:
         """Make sure the dimensions of y_true and y_pred match.
 
         :param y_true: True user-item interactions.
-        :type y_true: csr_matrix
+        :type y_true: csr_array
         :param y_pred: Predicted affinity of users for items.
-        :type y_pred: csr_matrix
+        :type y_pred: csr_array
         :raises AssertionError: Shape mismatch between y_true and y_pred.
         :return: True if dimensions match.
         :rtype: bool
@@ -103,18 +103,18 @@ class Metric:
     def _set_shape(self, y_true):
         self.num_users_, self.num_items_ = y_true.shape
 
-    def _eliminate_empty_users(self, y_true: csr_matrix, y_pred: csr_matrix) -> Tuple[csr_matrix, csr_matrix]:
+    def _eliminate_empty_users(self, y_true: csr_array, y_pred: csr_array) -> Tuple[csr_array, csr_array]:
         """Eliminate users that have no interactions in ``y_true``.
 
         We cannot make accurate predictions of interactions for
         these users as there are none.
 
         :param y_true: True user-item interactions.
-        :type y_true: csr_matrix
+        :type y_true: csr_array
         :param y_pred: Predicted affinity of users for items.
-        :type y_pred: csr_matrix
+        :type y_pred: csr_array
         :return: (y_true, y_pred), with zero users eliminated.
-        :rtype: Tuple[csr_matrix, csr_matrix]
+        :rtype: Tuple[csr_array, csr_array]
         """
         nonzero_users = list(set(y_true.nonzero()[0]))
 
@@ -163,22 +163,22 @@ class MetricTopK(Metric):
         To be implemented in the child class.
 
         :param y_true: Expected interactions per user.
-        :type y_true: csr_matrix
+        :type y_true: csr_array
         :param y_pred_top_K: Ranks for topK recommendations per user
-        :type y_pred_top_K: csr_matrix
+        :type y_pred_top_K: csr_array
         """
         raise NotImplementedError()
 
-    def calculate(self, y_true: csr_matrix, y_pred: csr_matrix) -> None:
+    def calculate(self, y_true: csr_array, y_pred: csr_array) -> None:
         """Computes metric given true labels ``y_true`` and predicted scores ``y_pred``. Only Top-K recommendations are considered.
 
         Detailed metric results can be retrieved with :attr:`results`.
         Global aggregate metric value is retrieved as :attr:`value`.
 
         :param y_true: True user-item interactions.
-        :type y_true: csr_matrix
+        :type y_true: csr_array
         :param y_pred: Predicted affinity of users for items.
-        :type y_pred: csr_matrix
+        :type y_pred: csr_array
         """
         # Perform checks and cleaning
         y_true, y_pred = self._eliminate_empty_users(y_true, y_pred)
@@ -317,5 +317,5 @@ class FittedMetric(Metric, BaseEstimator):
     Examples are: IntraListDiversityK, IPSHitRateK
     """
 
-    def fit(self, X: csr_matrix):
+    def fit(self, X: csr_array):
         pass

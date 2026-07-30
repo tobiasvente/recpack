@@ -7,7 +7,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 
 from recpack.algorithms.time_aware_item_knn import (
@@ -173,10 +173,10 @@ def test_time_decay_knn_predict(mat, mat_diag, decay_function, fit_decay):
     algo = TARSItemKNNXia(K=2, fit_decay=fit_decay, decay_function=decay_function, decay_interval=1)
 
     algo.fit(mat)
-    assert isinstance(algo.similarity_matrix_, csr_matrix)
+    assert isinstance(algo.similarity_matrix_, csr_array)
 
     result = algo.predict(mat_diag)
-    assert isinstance(result, csr_matrix)
+    assert isinstance(result, csr_array)
 
     np.testing.assert_array_equal(result.toarray(), algo.similarity_matrix_.toarray())
 

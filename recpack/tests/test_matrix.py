@@ -17,8 +17,8 @@ import yaml
 from recpack.matrix.util import (
     UnsupportedTypeError,
 )
-from recpack.matrix import InteractionMatrix, to_csr_matrix
-from scipy.sparse import csr_matrix
+from recpack.matrix import InteractionMatrix, to_csr_array
+from scipy.sparse import csr_array
 
 
 USER_IX = InteractionMatrix.USER_IX
@@ -339,8 +339,8 @@ def test_num_interactions2(interaction_m_w_duplicate):
     assert interaction_m_w_duplicate.num_interactions == 5
 
 
-def test_from_csr_matrix(data):
-    interaction_m = InteractionMatrix.from_csr_matrix(data)
+def test_from_csr_array(data):
+    interaction_m = InteractionMatrix.from_csr_array(data)
 
     assert not interaction_m.has_timestamps
 
@@ -353,13 +353,13 @@ def test_from_csr_matrix(data):
 @pytest.fixture
 def m_csr():
     m = [[1, 1, 0, 0], [0, 1, 2, 0], [0, 0, 0, 0]]
-    return csr_matrix(m, dtype=np.int32)
+    return csr_array(m, dtype=np.int32)
 
 
 @pytest.fixture
 def m_csr_binary():
     m = [[1, 1, 0, 0], [0, 1, 1, 0], [0, 0, 0, 0]]
-    return csr_matrix(m, dtype=np.int32)
+    return csr_array(m, dtype=np.int32)
 
 
 @pytest.fixture
@@ -380,57 +380,57 @@ def matrix_equal(a, b):
     return np.array_equal(a.toarray(), b.toarray())
 
 
-def test_to_csr_matrix_csr(m_csr):
-    # csr_matrix -> csr_matrix
-    result = to_csr_matrix(m_csr)
+def test_to_csr_array_csr(m_csr):
+    # csr_array -> csr_array
+    result = to_csr_array(m_csr)
     assert result is m_csr
 
 
-def test_to_csr_matrix_interaction_matrix(m_csr, m_datam):
-    # InteractionMatrix -> csr_matrix
-    result = to_csr_matrix(m_datam)
+def test_to_csr_array_interaction_matrix(m_csr, m_datam):
+    # InteractionMatrix -> csr_array
+    result = to_csr_array(m_datam)
     assert matrix_equal(result, m_csr)
 
 
-def test_to_csr_matrix_tup_interaction_matrix(m_csr, m_datam):
+def test_to_csr_array_tup_interaction_matrix(m_csr, m_datam):
     # tuple -> tuple
-    result = to_csr_matrix((m_datam, m_datam))
+    result = to_csr_array((m_datam, m_datam))
     assert all(matrix_equal(r, m_csr) for r in result)
 
 
-def test_to_csr_matrix_tup_interaction_matrix2(m_csr, m_datam):
+def test_to_csr_array_tup_interaction_matrix2(m_csr, m_datam):
     # tuple(Matrix, tuple(Matrix, Matrix))
     # Useful for when validation data and train data need to be converted
-    result_1, (r_2_1, r_2_2) = to_csr_matrix((m_datam, (m_datam, m_datam)))
+    result_1, (r_2_1, r_2_2) = to_csr_array((m_datam, (m_datam, m_datam)))
     assert matrix_equal(result_1, m_csr)
     assert matrix_equal(r_2_1, m_csr)
     assert matrix_equal(r_2_2, m_csr)
 
 
-def test_to_csr_matrix_unsupported_type():
+def test_to_csr_array_unsupported_type():
     # unsupported type
     with pytest.raises(UnsupportedTypeError):
-        result = to_csr_matrix([1, 2, 3])
+        result = to_csr_array([1, 2, 3])
 
 
 def test_to_binary_csr(m_csr, m_datam, m_csr_binary):
-    # csr_matrix -> csr_matrix
-    result = to_csr_matrix(m_csr, binary=True)
+    # csr_array -> csr_array
+    result = to_csr_array(m_csr, binary=True)
     assert matrix_equal(result, m_csr_binary)
     assert result.dtype == m_csr.dtype
-    result = to_csr_matrix(m_csr_binary, binary=True)
+    result = to_csr_array(m_csr_binary, binary=True)
     assert matrix_equal(result, m_csr_binary)
 
 
 def test_to_binary_csr2(m_csr, m_datam, m_csr_binary):
-    # InteractionMatrix -> csr_matrix
-    result = to_csr_matrix(m_datam, binary=True)
+    # InteractionMatrix -> csr_array
+    result = to_csr_array(m_datam, binary=True)
     assert matrix_equal(result, m_csr_binary)
 
 
 def test_to_binary_csr3(m_csr, m_datam, m_csr_binary):
     # tuple -> tuple
-    result = to_csr_matrix((m_csr, m_datam), binary=True)
+    result = to_csr_array((m_csr, m_datam), binary=True)
     assert matrix_equal(result[0], m_csr_binary)
     assert matrix_equal(result[1], m_csr_binary)
 
