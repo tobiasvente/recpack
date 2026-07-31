@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 from unittest.mock import MagicMock
 
@@ -142,7 +142,7 @@ def test_session_rnn_predict(session_rnn, matrix_sessions):
     top_item = scores.argmax(axis=1)
 
     # Prediction matrix should have same shape as input matrix
-    assert isinstance(X_pred, csr_matrix)
+    assert isinstance(X_pred, csr_array)
     assert X_pred.shape == matrix_sessions.shape
 
     # All users with a history should have predictions
@@ -168,7 +168,7 @@ def test_session_rnn_predict_topK(session_rnn_topK, matrix_sessions):
     top_item = scores.argmax(axis=1)
 
     # Prediction matrix should have same shape as input matrix
-    assert isinstance(X_pred, csr_matrix)
+    assert isinstance(X_pred, csr_array)
     assert X_pred.shape == matrix_sessions.shape
 
     # All users with a history should have predictions

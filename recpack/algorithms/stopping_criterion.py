@@ -9,7 +9,7 @@ import logging
 from typing import Callable
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms.loss_functions import bpr_loss_wrapper, warp_loss_wrapper
 from recpack.metrics.dcg import ndcg_k
@@ -31,10 +31,10 @@ class StoppingCriterion:
     **Example**::
 
         import numpy as np
-        from scipy.sparse import csr_matrix
+        from scipy.sparse import csr_array
         from recpack.algorithms.stopping_criterion import StoppingCriterion
-        X_true = csr_matrix(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
-        X_pred = csr_matrix(np.array([[.9, .5, .2], [.3, .2, .05], [.1, .1, .9]]))
+        X_true = csr_array(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
+        X_pred = csr_array(np.array([[.9, .5, .2], [.3, .2, .05], [.1, .1, .9]]))
 
         # Creating a simple loss function
         # That computes the sum of the absolute error at each position in the matrix
@@ -57,7 +57,7 @@ class StoppingCriterion:
 
         # Constructing a better prediction matrix
         # This would usually be done by a learning algorithm
-        X_pred = csr_matrix(np.array([[.9, .3, .8], [.4, .5, .05], [.4, .4, .5]]))
+        X_pred = csr_array(np.array([[.9, .3, .8], [.4, .5, .05], [.4, .4, .5]]))
         better = sc.update(X_true, X_pred)
         assert better
 
@@ -131,7 +131,7 @@ class StoppingCriterion:
 
         self.kwargs = kwargs
 
-    def update(self, X_true: csr_matrix, X_pred: csr_matrix) -> bool:
+    def update(self, X_true: csr_array, X_pred: csr_array) -> bool:
         """Update StoppingCriterion value based on
         expected and predicted interactions.
 
@@ -200,10 +200,10 @@ class StoppingCriterion:
         **Example**::
 
             import numpy as np
-            from scipy.sparse import csr_matrix
+            from scipy.sparse import csr_array
             from recpack.algorithms.stopping_criterion import StoppingCriterion
-            X_true = csr_matrix(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
-            X_pred = csr_matrix(np.array([[.9, .5, .2], [.3, .2, .05], [.1, .1, .9]]))
+            X_true = csr_array(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
+            X_pred = csr_array(np.array([[.9, .5, .2], [.3, .2, .05], [.1, .1, .9]]))
 
             # construct StoppingCriterion
             # setting k to 2, such that when ndcg function is called,

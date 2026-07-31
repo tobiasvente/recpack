@@ -5,7 +5,7 @@
 #   Lien Michiels
 #   Robin Verachtert
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from recpack.algorithms.base import TopKItemSimilarityMatrixAlgorithm
 from recpack.algorithms.util import invert
@@ -43,7 +43,7 @@ class SequentialRules(TopKItemSimilarityMatrixAlgorithm):
         self._assert_has_timestamps(X)
         return X
 
-    def _transform_predict_input(self, X: Matrix) -> csr_matrix:
+    def _transform_predict_input(self, X: Matrix) -> csr_array:
         """Weight each of the interactions by the decay factor of its timestamp"""
         self._assert_is_interaction_matrix(X)
         self._assert_has_timestamps(X)
@@ -56,7 +56,7 @@ class SequentialRules(TopKItemSimilarityMatrixAlgorithm):
 
     def _fit(self, X: InteractionMatrix):
         num_items = X.shape[1]
-        similarities = lil_matrix((num_items, num_items))
+        similarities = lil_array((num_items, num_items))
 
         for user, hist in X.sorted_item_history:
             hist_len = len(hist)
@@ -71,5 +71,5 @@ class SequentialRules(TopKItemSimilarityMatrixAlgorithm):
         # by dividing with the amount of occurrences of the left hand side item.
         # We also only keep the K highest values.
         self.similarity_matrix_ = get_top_K_values(
-            csr_matrix(similarities.multiply(invert(X.binary_values.sum(axis=0).T))), self.K
+            csr_array(similarities.multiply(invert(X.binary_values.sum(axis=0))[:, None])), self.K
         )

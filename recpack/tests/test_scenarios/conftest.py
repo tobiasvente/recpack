@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 from recpack.matrix import InteractionMatrix
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import pandas as pd
 import pytest
 import numpy as np
@@ -111,7 +111,7 @@ def data_m_sessions():
     """
     # (user, time) matrix, non-zero entries are item ids
     # fmt:off
-    user_time = csr_matrix(
+    user_time = csr_array(
         [
             #0  1  2  3  4  5  6  7
             [1, 0, 2, 1, 0, 0, 0, 0],  # time: max 3

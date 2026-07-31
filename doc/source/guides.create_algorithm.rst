@@ -63,7 +63,7 @@ Even this base class already implements quite a bit:
 - ``predict(X)`` provides a wrapper around the ``_predict`` function we need to implement.
 - ``_transform_predict_input(X)`` and ``_transform_fit_input(X)`` are used by ``fit`` and ``predict`` 
   to convert their input matrices (X) into the required types. By default, this base class 
-  transform the data into a csr_matrix, which suits our purpose perfectly as we have no need 
+  transform the data into a csr_array, which suits our purpose perfectly as we have no need
   of timestamps.
 - ``_check_fit_complete()`` is called at the end of the ``fit`` method to make sure 
   fitting was successful.
@@ -87,7 +87,7 @@ Our algorithm has two hyper parameters:
 ::
 
     import numpy as np
-    from scipy.sparse import csr_matrix
+    from scipy.sparse import csr_array
 
     from recpack.algorithms.base import Algorithm
 
@@ -116,7 +116,7 @@ with the item, then take the softmax of the K most popular items.
 
 ::
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
         # compute pop by taking logarithm of the raw counts
         # A1 puts it into a 1d array, making all subsequent operations easy
         pop = np.log(np.sum(X, axis=0)).A1
@@ -152,7 +152,7 @@ Remember that sampling probabilities were stored in ``softmax_scores_`` during f
 
 ::
 
-    def _predict(self, X:csr_matrix):
+    def _predict(self, X:csr_array):
         # Randomly sample items, with weights decided by the softmax scores
         users = X.nonzero()[0]
 
@@ -171,7 +171,7 @@ Remember that sampling probabilities were stored in ``softmax_scores_`` during f
             )
         ]
         user_idxs, item_idxs, scores = list(zip(*score_list))
-        score_matrix = csr_matrix((scores, (user_idxs, item_idxs)), shape=X.shape)
+        score_matrix = csr_array((scores, (user_idxs, item_idxs)), shape=X.shape)
 
         return score_matrix
 
@@ -211,7 +211,7 @@ we update ``_transform_fit_input``.
 ::
 
     import numpy as np
-    from scipy.sparse import csr_matrix, lil_matrix
+    from scipy.sparse import csr_array, lil_array
 
     from recpack.algorithms.base import Algorithm
     from recpack.data.matrix import InteractionMatrix
@@ -264,8 +264,8 @@ we set the item's score equal to the recency score we computed in ``_fit``.
 
 ::
 
-    def _predict(self, X: csr_matrix):
-        results = lil_matrix(X.shape)
+    def _predict(self, X: csr_array):
+        results = lil_array(X.shape)
         
         users = get_users(X)
         
@@ -322,7 +322,7 @@ We also add a parameter ``random_state``, also a parameter of ``TruncatedSVD``, 
 ::
 
     import numpy as np
-    from scipy.sparse import csr_matrix, lil_matrix, diags
+    from scipy.sparse import csr_array, lil_array, diags_array
     from sklearn.decomposition import TruncatedSVD
 
     from recpack.algorithms.base import FactorizationAlgorithm
@@ -362,7 +362,7 @@ Since :math:`\Sigma` is a square matrix this does not change the matrix dimensio
 
 ::
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
         model = TruncatedSVD(
             n_components=self.num_components, n_iter=7, random_state=self.random_state
         )
@@ -372,7 +372,7 @@ Since :math:`\Sigma` is a square matrix this does not change the matrix dimensio
         self.user_embedding_ = model.fit_transform(X)
 
         V = model.components_
-        sigma = diags(model.singular_values_)
+        sigma = diags_array(model.singular_values_)
         self.item_embedding_ = sigma @ V
 
         return self
@@ -410,8 +410,8 @@ This base class comes with quite a bit more plumbing that the others:
 - ``save`` saves the current PyTorch model to disk.
 - ``load`` loads a PyTorch model from file.
 - ``filename`` generates a unique filename for the current best model.
-- ``_transform_predict_input`` transforms the input matrix to a ``csr_matrix`` by default.
-- ``_transform_fit_input`` transforms the input matrices to a ``csr_matrix`` by default.
+- ``_transform_predict_input`` transforms the input matrix to a ``csr_array`` by default.
+- ``_transform_fit_input`` transforms the input matrices to a ``csr_array`` by default.
 - ``_evaluate`` performs one evaluation step, which consists of making predictions.
   for the validation data and subsequently updating the stopping criterion.
 - ``_load_best`` loads the best model encountered during training as the final model used to make predictions. 
@@ -431,7 +431,7 @@ The ``forward`` method is also used to make recommendations at prediction time.
     from typing import List
 
     import numpy as np
-    from scipy.sparse import csr_matrix, lil_matrix
+    from scipy.sparse import csr_array, lil_array
     import torch
     import torch.optim as optim
     import torch.nn as nn
@@ -532,7 +532,7 @@ Here we use simple SGD, but any PyTorch optimizer can be used.
 
 ::
             
-    def _init_model(self, X:csr_matrix):
+    def _init_model(self, X:csr_array):
         num_users, num_items = X.shape
         self.model_ = MFModule(
             num_users, num_items, num_components=self.num_components
@@ -603,20 +603,20 @@ It then computes the matrix multiplication of its embeddings.
 
 ::
 
-    def _batch_predict(self, X: csr_matrix, users: List[int] = None) -> np.ndarray:
+    def _batch_predict(self, X: csr_array, users: List[int] = None) -> np.ndarray:
         """Predict scores for matrix X, given the selected users.
 
         If there are no selected users, you can assume X is a full matrix,
         and users can be retrieved as the nonzero indices in the X matrix.
 
         :param X: Matrix of user item interactions
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: dense matrix of scores per user item pair.
         :rtype: np.ndarray
         """
-        X_pred = lil_matrix(X.shape)
+        X_pred = lil_array(X.shape)
         if users is None:
             users = get_users(X)
 

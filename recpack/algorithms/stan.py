@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from recpack.algorithms import Algorithm
 from recpack.algorithms.util import get_batches
@@ -116,14 +116,14 @@ class STAN(Algorithm):
         self.sessions_ = X
         session_interactions_timestamps = X.last_timestamps_matrix
         self.session_interactions_positions_ = timestamp_matrix_to_position(session_interactions_timestamps)
-        self.historical_session_timestamps_ = session_interactions_timestamps.max(axis=1)  # |U| x 1 matrix
+        self.historical_session_timestamps_ = csr_array(session_interactions_timestamps.max(axis=1).toarray()[:, None]) # |U| x 1 matrix
 
-    def _predict(self, X: InteractionMatrix) -> csr_matrix:
+    def _predict(self, X: InteractionMatrix) -> csr_array:
         timestamp_matrix = X.last_timestamps_matrix
 
         # Construct the session similarity matrix & apply weighting and topK
         # Do this iteratively for sections of users
-        full_session_similarity_matrix = lil_matrix((X.shape[0], X.shape[0]))
+        full_session_similarity_matrix = lil_array((X.shape[0], X.shape[0]))
 
         for user_batch in get_batches(X.active_users, batch_size=1000):
             session_similarity = self._compute_session_similarity(timestamp_matrix[user_batch, :]).tolil()
@@ -138,14 +138,14 @@ class STAN(Algorithm):
         predictions = self._compute_prediction_scores(full_session_similarity_matrix, X)
         return predictions
 
-    def _compute_session_similarity(self, session_timestamps: csr_matrix) -> csr_matrix:
+    def _compute_session_similarity(self, session_timestamps: csr_array) -> csr_array:
         """Computes session similarity given the timestamps of session interactions.
 
         :param session_timestamps: Matrix with timestamps of interactions
-        :type session_timestamps: csr_matrix
+        :type session_timestamps: csr_array
         :return: A |session| x |session| matrix with similarities.
             2nd dimension are the training sessions.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
 
         # Compute the per item weights for each of the sessions:
@@ -166,17 +166,17 @@ class STAN(Algorithm):
         #   <a, b> / sqrt(|a| * |b|)
 
         session_similarity = weighted_sessions @ self.sessions_.binary_values.T
-        denominator_part_1 = session_ranks.max(axis=1)
+        denominator_part_1 = csr_array(session_ranks.max(axis=1).toarray()[:, None])
         denominator_part_1.data = 1 / np.sqrt(denominator_part_1.data)
-        denominator_part_2 = self.session_interactions_positions_.max(axis=1)
+        denominator_part_2 = csr_array(self.session_interactions_positions_.max(axis=1).toarray()[:, None])
         denominator_part_2.data = 1 / np.sqrt(denominator_part_2.data)
 
         session_similarity = session_similarity.multiply(denominator_part_1).multiply(denominator_part_2.T)
         return session_similarity
 
     def _compute_session_similarity_weights(
-        self, session_timestamps: csr_matrix, session_similarities: csr_matrix
-    ) -> csr_matrix:
+        self, session_timestamps: csr_array, session_similarities: csr_array
+    ) -> csr_array:
         """Session similarities will be weighted proportional
         to the time between the training and input sessions.
 
@@ -185,11 +185,11 @@ class STAN(Algorithm):
         :param session_timestamps: [description]
         :type session_timestamps: [type]
         :param session_similarities: The similarities between sessions
-        :type session_similarities: csr_matrix
+        :type session_similarities: csr_array
         :return: [description]
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
-        sessions_last_timestamp = session_timestamps.max(axis=1)
+        sessions_last_timestamp = csr_array(session_timestamps.max(axis=1).toarray()[:, None])
 
         # To compute - t(s) - t(s_j) i.e. t(s_j) - t(s)
         # only for those sessions that are actually similar,
@@ -212,27 +212,27 @@ class STAN(Algorithm):
 
         return session_similarity_weights
 
-    def _compute_prediction_scores(self, session_similarity: csr_matrix, X: InteractionMatrix) -> csr_matrix:
+    def _compute_prediction_scores(self, session_similarity: csr_array, X: InteractionMatrix) -> csr_array:
         """Computes recommendation scores for active users given the session similarity matrix.
 
         :param session_similarity: The matrix of similarities between sessions.
             Dimension 1 = input sessions.
             Dimension 2 = training sessions.
-        :type session_similarity: csr_matrix
+        :type session_similarity: csr_array
         :param X: The input session interaction matrix.
         :type X: InteractionMatrix
         :return: |U| x |I| scores matrix.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
-        results = lil_matrix(X.shape)
+        results = lil_array(X.shape)
         binary_history = X.binary_values
         for session in X.active_users:
-            history = binary_history[session, :]
+            history = binary_history[[session], :]
             # get the similarity between the session and training sessions.
-            neighborhood_scores = session_similarity[session, :].toarray()
+            neighborhood_scores = session_similarity[[session], :].toarray()
 
             # Get the positions of visits in the neighborhood sessions
-            neighborhood_positions = lil_matrix(
+            neighborhood_positions = lil_array(
                 self.session_interactions_positions_.multiply((neighborhood_scores > 0).T)
             )
 
@@ -250,7 +250,7 @@ class STAN(Algorithm):
             # so wether it is 1 or 0 does not impact the reproduction results.
             # Because recpack does not always remove history items,
             # it makes more sense to not recommend this last matching item as well.
-            item_weights = neighborhood_positions - (neighborhood_positions > 0).multiply(last_match.A)
+            item_weights = neighborhood_positions - (neighborhood_positions > 0).multiply(last_match.toarray()[:, None])
 
             item_weights.data = np.exp(-np.abs(item_weights.data) * self.distance_from_match_decay)
 
@@ -263,9 +263,9 @@ def timestamp_matrix_to_position(timestamp_matrix):
     """Returns a matrix of positions from 1 (first interaction) to l (last interaction).
 
     :param X: Matrix from which we will select K values in every row.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: Matrix with K values per row.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     U, I, V = [], [], []
     for row_ix, (le, ri) in enumerate(zip(timestamp_matrix.indptr[:-1], timestamp_matrix.indptr[1:])):
@@ -277,4 +277,4 @@ def timestamp_matrix_to_position(timestamp_matrix):
                 I.append(timestamp_matrix.indices[le + sort_ix])
                 V.append(rank + 1)
 
-    return csr_matrix((V, (U, I)), shape=timestamp_matrix.shape)
+    return csr_array((V, (U, I)), shape=timestamp_matrix.shape)

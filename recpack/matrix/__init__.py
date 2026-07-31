@@ -36,4 +36,4 @@ The following example constructs a 4x4 matrix, with 4 nonzero values::
 """
 
 from recpack.matrix.interaction_matrix import InteractionMatrix
-from recpack.matrix.util import Matrix, to_binary, to_csr_matrix
+from recpack.matrix.util import Matrix, to_binary, to_csr_array

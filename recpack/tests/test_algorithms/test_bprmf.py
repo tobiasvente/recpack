@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 
 from recpack.algorithms import BPRMF
@@ -24,7 +24,7 @@ def X_in_for_pairwise():
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     )
 
-    pv = csr_matrix((pv_values, (pv_users, pv_items)), shape=(10, 5))
+    pv = csr_array((pv_values, (pv_users, pv_items)), shape=(10, 5))
 
     return pv
 

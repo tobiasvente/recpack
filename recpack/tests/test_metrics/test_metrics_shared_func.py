@@ -8,7 +8,7 @@
 import pytest
 import numpy as np
 import numpy.random
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.metrics import (
     NDCGK,
@@ -54,7 +54,7 @@ def test_results_elementwise_topK(metric_cls, X_true, X_pred):
     assert 1 not in results["user_id"].unique()
 
     assert results.shape[0] == metric.num_users_ * K  # K interactions for each user
-    assert metric.num_users_ == X_pred.sum(axis=1)[:, 0].nonzero()[0].shape[0]
+    assert metric.num_users_ == X_pred.sum(axis=1).nonzero()[0].shape[0]
     assert metric.num_items_ == X_pred.shape[1]
 
 
@@ -88,7 +88,7 @@ def test_results_listwise_topK(metric_cls, X_true, X_pred):
     assert 1 not in results["user_id"].unique()
 
     assert results.shape[0] == metric.num_users_  # One entry for each user
-    assert metric.num_users_ == X_pred.sum(axis=1)[:, 0].nonzero()[0].shape[0]
+    assert metric.num_users_ == X_pred.sum(axis=1).nonzero()[0].shape[0]
     assert metric.num_items_ == X_pred.shape[1]
 
 
@@ -126,7 +126,7 @@ def test_results_elementwise_topK_no_reco(metric_cls, X_true_unrecommended_user,
     # There is a user without any predictions,
     # so the number of users is equal to
     # 1 + the number of users with predictions
-    assert metric.num_users_ == X_pred.sum(axis=1)[:, 0].nonzero()[0].shape[0] + 1
+    assert metric.num_users_ == X_pred.sum(axis=1).nonzero()[0].shape[0] + 1
     assert metric.num_items_ == X_pred.shape[1]
 
 
@@ -161,7 +161,7 @@ def test_results_listwise_topK_no_reco(metric_cls, X_true_unrecommended_user, X_
 
     assert results.shape[0] == metric.num_users_  # One entry for each user
     # There is a user without any prediction
-    assert metric.num_users_ == X_pred.sum(axis=1)[:, 0].nonzero()[0].shape[0] + 1
+    assert metric.num_users_ == X_pred.sum(axis=1).nonzero()[0].shape[0] + 1
     assert metric.num_items_ == X_pred.shape[1]
 
 
@@ -177,8 +177,8 @@ def test_eliminate_zeros_no_reco(X_true_unrecommended_user, X_pred):
 def test_verify_shapes():
     m = DCGK(3)
 
-    y_pred = csr_matrix(np.ones((3, 2)))
-    y_true = csr_matrix(np.ones((2, 3)))
+    y_pred = csr_array(np.ones((3, 2)))
+    y_true = csr_array(np.ones((2, 3)))
 
     with pytest.raises(AssertionError):
         m.calculate(y_true, y_pred)

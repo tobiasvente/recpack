@@ -24,14 +24,14 @@ def test_check_input(algorithm, matrix_sessions):
         algorithm._transform_fit_input(matrix_sessions.binary_values)
 
     assert type_error.match(
-        "TARSItemKNNLiu requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_matrix'>."
+        "TARSItemKNNLiu requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_array'>."
     )
 
     with pytest.raises(TypeError) as type_error:
         algorithm._transform_predict_input(matrix_sessions.binary_values)
 
     assert type_error.match(
-        "TARSItemKNNLiu requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_matrix'>."
+        "TARSItemKNNLiu requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_array'>."
     )
 
     with pytest.raises(ValueError) as value_error:

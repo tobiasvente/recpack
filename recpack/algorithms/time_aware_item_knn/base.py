@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 from tqdm.auto import tqdm
 
 from recpack.algorithms.base import TopKItemSimilarityMatrixAlgorithm
@@ -137,16 +137,16 @@ class TARSItemKNN(TopKItemSimilarityMatrixAlgorithm):
         elif self.decay_function in ["log", "linear", "concave"]:
             return self.DECAY_FUNCTIONS[self.decay_function](decay, max_value)
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Predict scores for nonzero users in X.
 
         Scores are computed by matrix multiplication of weighted X
         with the stored similarity matrix.
 
-        :param X: csr_matrix with interactions
-        :type X: csr_matrix
-        :return: csr_matrix with scores
-        :rtype: csr_matrix
+        :param X: csr_array with interactions
+        :type X: csr_array
+        :return: csr_array with scores
+        :rtype: csr_array
         """
         X = self._add_decay_to_predict_matrix(X)
         return super()._predict(X)
@@ -163,7 +163,7 @@ class TARSItemKNN(TopKItemSimilarityMatrixAlgorithm):
         self._assert_has_timestamps(X)
         return X
 
-    def _fit(self, X: csr_matrix) -> None:
+    def _fit(self, X: csr_array) -> None:
         """Fit a cosine similarity matrix from item to item."""
         X = self._add_decay_to_fit_matrix(X)
 
@@ -178,26 +178,26 @@ class TARSItemKNN(TopKItemSimilarityMatrixAlgorithm):
 
         self.similarity_matrix_ = item_similarities
 
-    def _add_decay_to_interaction_matrix(self, X: InteractionMatrix, decay: float) -> csr_matrix:
+    def _add_decay_to_interaction_matrix(self, X: InteractionMatrix, decay: float) -> csr_array:
         """Weigh the interaction matrix based on age of the events.
 
         If decay is 0, it is assumed to be disabled, and so we just return binary matrix.
         :param X: Interaction matrix.
         :type X: InteractionMatrix
         :return: Weighted csr matrix.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         timestamp_mat = X.last_timestamps_matrix
         # To get 'now', we add 1 to the maximal timestamp. This makes sure there are no vanishing zeroes.
         now = timestamp_mat.data.max() + 1
         ages = (now - timestamp_mat.data) / self.decay_interval
         timestamp_mat.data = self._get_decay_func(decay, ages.max())(ages)
-        return csr_matrix(timestamp_mat)
+        return csr_array(timestamp_mat)
 
-    def _add_decay_to_fit_matrix(self, X: InteractionMatrix) -> csr_matrix:
+    def _add_decay_to_fit_matrix(self, X: InteractionMatrix) -> csr_array:
         return self._add_decay_to_interaction_matrix(X, self.fit_decay)
 
-    def _add_decay_to_predict_matrix(self, X: InteractionMatrix) -> csr_matrix:
+    def _add_decay_to_predict_matrix(self, X: InteractionMatrix) -> csr_array:
         return self._add_decay_to_interaction_matrix(X, self.predict_decay)
 
 
@@ -261,20 +261,21 @@ class TARSItemKNNCoocDistance(TARSItemKNN):
         # Get the timestamps matrix, and apply the interval
         last_timestamps_matrix = X.last_timestamps_matrix / self.decay_interval
 
-        self.similarity_matrix_ = lil_matrix((X.shape[1], X.shape[1]))
+        self.similarity_matrix_ = lil_array((X.shape[1], X.shape[1]))
 
         max_distance_possible = last_timestamps_matrix.data.max() - last_timestamps_matrix.data.min()
         decay_func = self._get_decay_func(self.fit_decay, max_distance_possible)
 
         # Loop over all items as centers
         for i in tqdm(range(num_items)):
-            n_center_occ = (last_timestamps_matrix[:, i] > 0).sum()
+            center_timestamps = last_timestamps_matrix[:, [i]]
+            n_center_occ = (center_timestamps > 0).sum()
             if n_center_occ == 0:  # Unvisited item, no neighbours
                 continue
 
             # Compute |t_i - t_j| for each j cooccurring with item i
-            cooc_ts = last_timestamps_matrix.multiply(last_timestamps_matrix[:, i] > 0)
-            distance = cooc_ts - (cooc_ts > 0).multiply(last_timestamps_matrix[:, i])
+            cooc_ts = last_timestamps_matrix.multiply(center_timestamps > 0)
+            distance = cooc_ts - (cooc_ts > 0).multiply(center_timestamps)
             distance.data = np.abs(distance.data)
 
             # Decay the distances
@@ -282,13 +283,13 @@ class TARSItemKNNCoocDistance(TARSItemKNN):
             # and we only give it values per user.
             distance.data = decay_func(distance.data)
 
-            similarities = csr_matrix(distance.sum(axis=0))
+            similarities = csr_array(distance.sum(axis=0)[None, :])
             # Normalisation options.
             if self.similarity == "conditional_probability":
                 similarities = similarities.multiply(1 / n_center_occ)
             else:
                 # Just use the sum of the similarities (as in Xia 2010)
                 pass
-            self.similarity_matrix_[i] = get_top_K_values(csr_matrix(similarities), self.K)
+            self.similarity_matrix_[i] = get_top_K_values(csr_array(similarities), self.K)
 
         self.similarity_matrix_ = self.similarity_matrix_.tocsr()

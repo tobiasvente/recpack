@@ -32,7 +32,7 @@ class NMFItemToItem(ItemSimilarityMatrixAlgorithm):
         self.num_components = num_components
         self.seed = seed
 
-    def _fit(self, X: scipy.sparse.csr_matrix):
+    def _fit(self, X: scipy.sparse.csr_array):
         self.model_ = NMF(self.num_components, self.seed)
         self.model_.fit(X)
 
@@ -59,7 +59,7 @@ class SVDItemToItem(ItemSimilarityMatrixAlgorithm):
         self.num_components = num_components
         self.seed = seed
 
-    def _fit(self, X: scipy.sparse.csr_matrix):
+    def _fit(self, X: scipy.sparse.csr_array):
         self.model_ = SVD(self.num_components, self.seed)
         self.model_.fit(X)
 

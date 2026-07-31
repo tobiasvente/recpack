@@ -7,7 +7,7 @@
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms.samplers import (
     BootstrapSampler,
@@ -66,7 +66,7 @@ def test_warp_sampling_exact():
     users = [np.random.randint(0, 100) for i in range(500)]
     items = [np.random.randint(0, 25) for i in range(500)]
     values = [1 for i in range(500)]
-    X_in = csr_matrix((values, (users, items)), shape=(100, 25))
+    X_in = csr_array((values, (users, items)), shape=(100, 25))
     X_in = to_binary(X_in)
 
     batch_size = 100
@@ -285,7 +285,7 @@ def test_unigram_distribution():
         [1, 1, 1, 1, 1, 1],
     )
 
-    X_in = csr_matrix((pv_values, (pv_users, pv_items)), shape=(10, 5))
+    X_in = csr_array((pv_values, (pv_users, pv_items)), shape=(10, 5))
 
     distr = unigram_distribution(X_in)
 

@@ -8,7 +8,7 @@
 import pytest
 import random
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 import recpack.postprocessing.filters as filters
 
@@ -21,7 +21,7 @@ AMOUNT_SELECTED = 5
     "prediction_matrix, items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS), np.random.randint(1, AMOUNT_SELECTED), replace=False),
         ),
     ],
@@ -40,11 +40,11 @@ def test_select_items(prediction_matrix, items):
     "prediction_matrix, items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS), np.random.randint(1, AMOUNT_SELECTED), replace=False),
         ),
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             random.sample(range(AMOUNT_OF_ITEMS), np.random.randint(1, AMOUNT_SELECTED)),
         ),
     ],
@@ -63,7 +63,7 @@ def test_select_items_array_like(prediction_matrix, items):
     "prediction_matrix, items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(
                 range(AMOUNT_OF_ITEMS),
                 np.random.randint(1, AMOUNT_SELECTED),
@@ -84,8 +84,8 @@ def test_exclude_items(prediction_matrix, items):
     "prediction_matrix1, prediction_matrix2, items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
-            csr_matrix(np.random.random_sample(size=(2 * AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(2 * AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(
                 range(AMOUNT_OF_ITEMS),
                 np.random.randint(1, AMOUNT_SELECTED),
@@ -115,22 +115,22 @@ def test_post_filter_item_empty(items):
     "prediction_matrix, items, filter_class",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS), 0, replace=False),
             filters.SelectItems,
         ),
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS), 0, replace=False),
             filters.ExcludeItems,
         ),
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS, 2 * AMOUNT_OF_ITEMS), AMOUNT_SELECTED, replace=False),
             filters.SelectItems,
         ),
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS, 2 * AMOUNT_OF_ITEMS), AMOUNT_SELECTED, replace=False),
             filters.ExcludeItems,
         ),

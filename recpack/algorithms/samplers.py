@@ -7,21 +7,21 @@
 
 from typing import Tuple, Iterator, Union
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 
 from recpack.matrix import InteractionMatrix, to_binary
 from recpack.algorithms.util import get_batches
 
 
-def unigram_distribution(X: csr_matrix) -> np.ndarray:
+def unigram_distribution(X: csr_array) -> np.ndarray:
     """Creates a unigram distribution based on the item frequency.
 
     Follows the advice outlined in https://arxiv.org/abs/1310.4546 to create this noise distribution:
     the noise distribution is taken to be the unigram distribution to the power (3/4).
     Note: this is a heuristic based on the original Word2Vec paper.
     """
-    item_counts_powered = np.power(X.sum(axis=0).A[0], 3 / 4)
+    item_counts_powered = np.power(X.sum(axis=0), 3 / 4)
     return item_counts_powered / item_counts_powered.sum()
 
 
@@ -83,7 +83,7 @@ class PositiveNegativeSampler(Sampler):
 
         self.distribution = distribution  # TODO: Enum style value, to avoid mismatches?
 
-    def _get_distribution(self, X: csr_matrix) -> Union[None, np.array]:
+    def _get_distribution(self, X: csr_array) -> Union[None, np.array]:
         if self.distribution == "uniform":
             # passing None as probabilities is the default for np.random.choice
             return None
@@ -92,12 +92,12 @@ class PositiveNegativeSampler(Sampler):
 
         raise ValueError("The requested distribution is unknown")
 
-    def _sample_negatives(self, X: csr_matrix, size, probabilities):
+    def _sample_negatives(self, X: csr_array, size, probabilities):
         candidates = np.arange(X.shape[1])
         return np.random.choice(candidates, size=size, p=probabilities)
 
     def sample(
-        self, X: csr_matrix, sample_size=None, positives=None
+        self, X: csr_array, sample_size=None, positives=None
     ) -> Iterator[Tuple[torch.LongTensor, torch.LongTensor, torch.LongTensor]]:
         """Sample num_negatives negatives for each sampled user-item-pair (positive).
 
@@ -105,7 +105,7 @@ class PositiveNegativeSampler(Sampler):
         ``sample_size`` cannot exceed the number of positives in X.
 
         :param X: Matrix with interactions to sample from.
-        :type X: csr_matrix
+        :type X: csr_array
         :param sample_size: The number of samples to create,
             if None, the number of positives entries in X will be used.
             Defaults to None.
@@ -392,7 +392,7 @@ class SequenceMiniBatchPositivesTargetsNegativesSampler(SequenceMiniBatchSampler
             )
 
 
-def _spot_collisions(users: np.ndarray, negatives_batch: np.ndarray, X: csr_matrix) -> Tuple[int, np.ndarray]:
+def _spot_collisions(users: np.ndarray, negatives_batch: np.ndarray, X: csr_array) -> Tuple[int, np.ndarray]:
     """Spot collisions between the negative samples and the interactions in X.
 
     :param users: Ordered batch of users
@@ -400,14 +400,14 @@ def _spot_collisions(users: np.ndarray, negatives_batch: np.ndarray, X: csr_matr
     :param negatives_batch: Ordered batch of negative items
     :type negatives_batch: np.ndarray
     :param X: Entirety of all user interactions
-    :type X: csr_matrix
+    :type X: csr_array
     :return: Tuple containing the number of incorrect negative samples,
         and the locations of these incorrect samples in the batch array
     :rtype: Tuple[int, np.ndarray]
     """
     # Eliminate the collisions, exactly.
-    # Turn this batch of negatives into a csr_matrix
-    negatives_batch_csr = csr_matrix(
+    # Turn this batch of negatives into a csr_array
+    negatives_batch_csr = csr_array(
         (
             np.ones(negatives_batch.shape[0]),
             (users, negatives_batch),
@@ -425,7 +425,7 @@ def _spot_collisions(users: np.ndarray, negatives_batch: np.ndarray, X: csr_matr
     # Initialize mask to all zeros = all False
     negatives_mask = np.zeros(negatives_batch.shape).astype(bool)
     # Get the indices of the false_negatives
-    _, false_negative_indices_csr = false_negatives.nonzero()
+    false_negative_indices_csr = false_negatives.nonzero()[0]
     # Get the corresponding false negative pairs
     # Assumes the order of samples in false_negatives
     # is the same as in negative_samples_mask

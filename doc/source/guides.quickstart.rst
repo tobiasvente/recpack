@@ -41,7 +41,7 @@ To download the dataset and preprocess, call::
 The result is an :class:`recpack.matrix.InteractionMatrix` object.
 This class is a wrapper around the data that provides frequently used views of the interaction data.
 
-For example, ``interaction_matrix.values`` returns a csr_matrix, where users are rows and items are column and the value is the number of interactions this user had with this item.
+For example, ``interaction_matrix.values`` returns a csr_array, where users are rows and items are column and the value is the number of interactions this user had with this item.
 Similarly, ``interaction_matrix.sorted_item_history`` returns an iterator of the sorted item histories per user.
 
 Next step in an experiment is to separate training, validation and test data to avoid data leakage.

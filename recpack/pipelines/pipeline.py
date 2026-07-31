@@ -12,7 +12,7 @@ from typing import Tuple, Union, Dict, List, Any, Optional, Callable
 
 from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 from tqdm.auto import tqdm
 
 from recpack.algorithms.base import Algorithm, TorchMLAlgorithm
@@ -167,7 +167,7 @@ class Pipeline(object):
             algorithm.fit(training_data)
         return algorithm
 
-    def _predict_and_postprocess(self, algorithm: Algorithm, data_in: InteractionMatrix) -> csr_matrix:
+    def _predict_and_postprocess(self, algorithm: Algorithm, data_in: InteractionMatrix) -> csr_array:
         X_pred = algorithm.predict(data_in)
 
         # QUESTION: This removes only the test_data_in/validation_data_in, I think in general more is removed. Was this intentional?

@@ -16,10 +16,10 @@ such as commonly used loss functions and sampling methods.
 
 **Example of use**::
 
-    from scipy.sparse import csr_matrix
+    from scipy.sparse import csr_array
     from recpack.algorithms import Random
 
-    X = csr_matrix(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
+    X = csr_array(np.array([[1, 0, 1], [1, 1, 0], [1, 1, 0]]))
 
     # Set hyper-parameter values
     algo = Random(K=3)

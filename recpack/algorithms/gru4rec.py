@@ -10,7 +10,7 @@ from math import ceil
 import time
 from typing import Tuple, List, Iterator, Optional
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 import torch
 import torch.nn as nn
@@ -220,7 +220,7 @@ class GRU4Rec(TorchMLAlgorithm):
         :param validation_data: The tuple with validation_in and validation_out data
         :type validation_data: Tuple[Matrix, Matrix]
         :return: The transformed matrices
-        :rtype: Tuple[csr_matrix, Tuple[csr_matrix, csr_matrix]]
+        :rtype: Tuple[csr_array, Tuple[csr_array, csr_array]]
         """
         self._assert_is_interaction_matrix(X, *validation_data)
         self._assert_has_timestamps(X, *validation_data)
@@ -318,7 +318,7 @@ class GRU4Rec(TorchMLAlgorithm):
         return zip(*split_tensors)
 
     def _predict(self, X: InteractionMatrix):
-        X_pred = lil_matrix(X.shape)
+        X_pred = lil_array(X.shape)
         self.model_.eval()
         with torch.no_grad():
             # Loop through users in batches
@@ -358,7 +358,7 @@ class GRU4Rec(TorchMLAlgorithm):
                         )
 
                         X_pred[uid_batch_w_last_item] = self._get_top_k_recommendations(
-                            csr_matrix(item_scores[:, :-1])
+                            csr_array(item_scores[:, :-1])
                         )
 
         return X_pred.tocsr()

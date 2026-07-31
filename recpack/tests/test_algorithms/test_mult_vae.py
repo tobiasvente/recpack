@@ -112,7 +112,7 @@ def test_predict(mult_vae, larger_matrix):
 
     X_pred = mult_vae.predict(larger_matrix)
 
-    assert isinstance(X_pred, scipy.sparse.csr_matrix)
+    assert isinstance(X_pred, scipy.sparse.csr_array)
 
     assert not set(X_pred.nonzero()[0]).difference(larger_matrix.nonzero()[0])
 
