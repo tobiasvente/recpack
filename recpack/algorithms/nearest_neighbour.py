@@ -14,7 +14,7 @@ from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import Normalizer
 
-from recpack.algorithms.base import TopKItemSimilarityMatrixAlgorithm
+from recpack.algorithms.base import Algorithm, TopKItemSimilarityMatrixAlgorithm
 from recpack.algorithms.util import invert, to_binary
 from recpack.util import get_top_K_values
 
@@ -67,21 +67,19 @@ def compute_conditional_probability(X: csr_matrix, pop_discount: float = 0) -> c
 
 
 def compute_cosine_similarity(X: csr_matrix) -> csr_matrix:
-    """Compute the cosine similarity between the items in the matrix.
+    """Compute cosine similarity between the rows of a matrix.
 
     Self similarity is removed.
 
-    :param X: user x item matrix with scores per user, item pair.
+    :param X: Matrix whose rows represent the entities to compare.
     :type X: csr_matrix
     :return: similarity matrix
     :rtype: csr_matrix
     """
-    # X.T otherwise we are doing a user KNN
-    item_cosine_similarities = cosine_similarity(X.T, dense_output=False)
-    item_cosine_similarities.setdiag(0)
-    # Set diagonal to 0, because we don't want to support self similarity
+    cosine_similarities = cosine_similarity(X, dense_output=False)
+    cosine_similarities.setdiag(0)
 
-    return item_cosine_similarities
+    return cosine_similarities
 
 
 def compute_pearson_similarity(X: csr_matrix) -> csr_matrix:
@@ -108,7 +106,8 @@ def compute_pearson_similarity(X: csr_matrix) -> csr_matrix:
     X = X - (X > 0).multiply(avg_per_item)
 
     # Given the rescaled matrix, the pearson correlation is just cosine similarity on this matrix.
-    return compute_cosine_similarity(X)
+    # X.T otherwise we are doing a user KNN
+    return compute_cosine_similarity(X.T)
 
 
 class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
@@ -210,7 +209,8 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
             X = transformer.transform(X)
 
         if self.similarity == "cosine":
-            item_similarities = compute_cosine_similarity(X)
+            # X.T otherwise we are doing a user KNN
+            item_similarities = compute_cosine_similarity(X.T)
         elif self.similarity == "conditional_probability":
             item_similarities = compute_conditional_probability(X, self.pop_discount)
 
@@ -338,7 +338,8 @@ class ItemPNN(ItemKNN):
             X = transformer.transform(X)
 
         if self.similarity == "cosine":
-            item_similarities = compute_cosine_similarity(X)
+            # X.T otherwise we are doing a user KNN
+            item_similarities = compute_cosine_similarity(X.T)
         elif self.similarity == "conditional_probability":
             item_similarities = compute_conditional_probability(X, self.pop_discount)
 
@@ -395,3 +396,98 @@ def get_K_values(X: csr_matrix, K: int, pdf: np.ndarray) -> csr_matrix:
 
     data_K = csr_matrix((V, (U, I)), shape=X.shape)
     return data_K.multiply(X)
+
+
+class UserKNN(Algorithm):
+    """User K Nearest Neighbours model.
+
+    For each user, the K most similar users are computed during fit.
+    The similarity parameter determines how similarity between two users is
+    computed. Supported options are ``"cosine"`` and ``"conditional_probability"``.
+
+    Cosine similarity between users u and v is computed as
+
+    .. math::
+        sim(u,v) = \\frac{X_u X_v}{||X_u||_2 ||X_v||_2}
+
+    The conditional-probability similarity of user u with user v is computed as
+
+    .. math::
+        sim(u,v) = \\frac{\\sum\\limits_{i \\in I} \\mathbb{I}_{u,i} X_{v,i}}{Freq(u)}
+
+    Where :math:`\\mathbb{I}_{u,i}` is 1 if user u has interacted with item i,
+    and 0 otherwise. This is a non-symmetric similarity measure.
+
+    Recommendation scores are computed by multiplying the fitted user
+    similarity matrix with the user-item interaction matrix supplied during
+    prediction.
+
+    :param K: How many neighbours to use per user. This should be smaller than
+        the number of rows in the matrix used for fitting.
+    :type K: int
+    :param similarity: Which similarity measure to use. Can be one of
+        ``["cosine", "conditional_probability"]``. Defaults to ``"cosine"``.
+    :type similarity: str, optional
+    :raises ValueError: If an unsupported similarity measure is passed.
+    """
+
+    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability"]
+
+    def __init__(self, K, similarity: str = "cosine"):
+        super().__init__()
+        self.K = K
+        if similarity not in self.SUPPORTED_SIMILARITIES:
+            raise ValueError(f"similarity {similarity} not supported")
+        self.similarity = similarity
+
+    def _fit(self, X: csr_matrix) -> None:
+        """Fit a similarity matrix from user to user.
+
+        :param X: user x item matrix with scores per user, item pair.
+        """
+        if self.similarity == "cosine":
+            user_similarities = compute_cosine_similarity(X)
+        elif self.similarity == "conditional_probability":
+            user_similarities = compute_conditional_probability(X.T)
+
+        user_similarities = get_top_K_values(user_similarities, K=self.K)
+
+        self.similarity_matrix_ = user_similarities
+
+    def _predict(self, X: csr_matrix) -> csr_matrix:
+        """Predict scores for nonzero users in X
+
+        Scores are computed by matrix multiplication of the stored similarity matrix with X.
+
+        :param X: user x item matrix with scores per user, item pair.
+        :type X: csr_matrix
+        :return: csr_matrix with scores
+        :rtype: csr_matrix
+        """
+        scores =  self.similarity_matrix_ @ X
+
+        return scores
+
+    def _check_fit_complete(self):
+        """Helper function to check if model was correctly fitted
+
+        Checks implemented:
+
+        - Checks if the algorithm has been fitted, using sklearn's `check_is_fitted`
+        - Checks if the fitted similarity matrix contains similar users for each user
+
+        For failing checks a warning is printed.
+        """
+        # Use super to check is fitted
+        super()._check_fit_complete()
+
+        # Additional checks on the fitted matrix.
+        # Check if actually exists!
+        assert hasattr(self, "similarity_matrix_")
+
+        # Check row wise, since that will determine the recommendation options.
+        users_with_score = set(self.similarity_matrix_.nonzero()[0])
+
+        missing = self.similarity_matrix_.shape[0] - len(users_with_score)
+        if missing > 0:
+            warnings.warn(f"{self.name} missing similar users for {missing} users.")
