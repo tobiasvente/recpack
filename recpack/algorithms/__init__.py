@@ -116,6 +116,7 @@ Session-Based Algorithms
 
     GRU4RecNegSampling
     GRU4RecCrossEntropy
+    SASRec
     STAN
     SequentialRules
 
@@ -273,6 +274,7 @@ from recpack.algorithms.gru4rec import (
     GRU4RecCrossEntropy,
 )
 
+from recpack.algorithms.sasrec import SASRec
 from recpack.algorithms.stan import STAN
 from recpack.algorithms.time_aware_item_knn import (
     TARSItemKNN,
