@@ -36,7 +36,7 @@ class AmazonDataset(Dataset):
 
     DATASETURL = "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/benchmark/0core/rating_only/"
 
-    MANUAL_DOWNLOAD_LINK = "https://amazon-reviews-2023.github.io/"
+    MANUAL_DOWNLOAD_LINK = "https://amazon-reviews-2023.github.io/data_processing/0core.html"
 
     REMOTE_FILENAME = ""
     """Name of the file containing user reviews on the Amazon server."""
@@ -158,5 +158,9 @@ class AmazonDataset(Dataset):
                 self.TIMESTAMP_IX: np.int64,
             },
         )
+
+        # Amazon Reviews 2023 stores timestamps in milliseconds
+        # InteractionMatrix and the Dataset contract use seconds since epoch.
+        df[self.TIMESTAMP_IX] = df[self.TIMESTAMP_IX] // 1000
 
         return df
