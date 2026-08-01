@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix, lil_matrix, vstack
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 import tempfile
@@ -22,7 +22,7 @@ from recpack.algorithms.stopping_criterion import (
     EarlyStoppingException,
     StoppingCriterion,
 )
-from recpack.algorithms.util import get_batches, get_users, sample_rows
+from recpack.algorithms.util import csr_from_rows, get_batches, get_users, sample_rows
 from recpack.matrix import InteractionMatrix, to_csr_matrix, Matrix
 from recpack.util import get_top_K_values
 
@@ -587,22 +587,32 @@ class TorchMLAlgorithm(Algorithm):
         :rtype: csr_matrix
         """
 
-        results = lil_matrix(X.shape)
+        batch_users = []
+        batch_results = []
         self.model_.eval()
         with torch.no_grad():
             for users in get_batches(get_users(X), batch_size=self.batch_size):
                 if isinstance(X, InteractionMatrix):
                     batch = X.users_in(users)
                 else:
-                    batch = lil_matrix(X.shape)
-                    batch[users] = X[users]
-                    batch = batch.tocsr()
+                    batch = csr_from_rows(X[users], users, X.shape)
 
-                results[users] = self._get_top_k_recommendations(self._batch_predict(batch, users=users)[users])
+                batch_users.extend(users)
+                batch_results.append(
+                    self._get_top_k_recommendations(csr_matrix(self._batch_predict(batch, users=users))[users])
+                )
+
+        if not batch_results:
+            return csr_matrix(X.shape)
+
+        # Assemble the batch results into the full-size prediction matrix
+        # in a single pass, instead of writing into a full-size lil_matrix
+        # once per batch.
+        results = csr_from_rows(vstack(batch_results, format="csr"), batch_users, X.shape)
 
         logger.debug(f"shape of response ({results.shape})")
 
-        return results.tocsr()
+        return results
 
     def _transform_fit_input(
         self, X: Matrix, validation_data: Tuple[Matrix, Matrix]

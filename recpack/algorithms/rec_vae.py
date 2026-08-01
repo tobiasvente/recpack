@@ -10,14 +10,14 @@ import logging
 from typing import List, Tuple, Optional
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import torch.optim as optim
 
 from recpack.algorithms.base import TorchMLAlgorithm
-from recpack.algorithms.util import swish, log_norm_pdf, naive_sparse2tensor, get_batches
+from recpack.algorithms.util import csr_from_rows, swish, log_norm_pdf, naive_sparse2tensor, get_batches
 
 
 logger = logging.getLogger("recpack")
@@ -287,10 +287,9 @@ class RecVAE(TorchMLAlgorithm):
 
         out_tensor, _, _ = self.model_(in_tensor)
 
-        result = lil_matrix(X.shape)
-        result[users] = out_tensor.detach().cpu().numpy()
+        scores = out_tensor.detach().cpu().numpy()
 
-        return result.tocsr()
+        return csr_from_rows(csr_matrix(scores), users, X.shape)
 
 
 class CompositePrior(nn.Module):

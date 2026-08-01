@@ -8,7 +8,7 @@
 import logging
 from typing import List
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 
 from tqdm.auto import tqdm
 
@@ -20,6 +20,7 @@ import torch.optim as optim
 from recpack.algorithms.base import TorchMLAlgorithm
 from recpack.algorithms.loss_functions import bpr_loss
 from recpack.algorithms.samplers import BootstrapSampler
+from recpack.algorithms.util import csr_from_rows
 
 logger = logging.getLogger("recpack")
 
@@ -164,10 +165,9 @@ class BPRMF(TorchMLAlgorithm):
         user_tensor = torch.LongTensor(users).to(self.device)
         item_tensor = torch.arange(X.shape[1]).to(self.device)
 
-        result = lil_matrix(X.shape)
-        result[users] = self.model_(user_tensor, item_tensor).detach().cpu().numpy()
+        scores = self.model_(user_tensor, item_tensor).detach().cpu().numpy()
 
-        return result.tocsr()
+        return csr_from_rows(csr_matrix(scores), users, X.shape)
 
     def _train_epoch(self, train_data: csr_matrix):
         """train a single epoch. Uses sampler to generate samples,
