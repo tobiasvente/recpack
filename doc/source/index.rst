@@ -56,6 +56,7 @@ If not, see <http://www.gnu.org/licenses/>.
    recpack.postprocessing
    recpack.metrics
    recpack.pipelines
+   recpack.utilities
 
 Indices and tables
 ==================
