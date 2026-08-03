@@ -7,7 +7,7 @@
 
 from abc import ABC, abstractmethod
 import numpy as np
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from warnings import warn
 
 from recpack.scenarios.splitters import StrongGeneralizationSplitter
@@ -26,22 +26,51 @@ class Scenario(ABC):
     should follow the same splitting strategy as
     the one used to create training and test datasets from the full dataset.
 
+    In addition to the top-level ``seed``, each random splitting step can be
+    seeded independently. This makes it possible to e.g. keep the training
+    dataset fixed across runs, while resampling only the test fold-in/hold-out
+    split, or to resample only the validation datasets.
+    Any of the per-step seeds that is left as None defaults to ``seed``,
+    so passing only ``seed`` behaves exactly as before.
+
     :param validation: Create validation datasets when True,
         else split into training and test datasets.
     :type validation: boolean, optional
     :param seed: Seed for randomisation parts of the scenario.
+        Used as fallback for the per-step seeds below.
         Defaults to None, so random seed will be generated.
     :type seed: int, optional
+    :param train_test_seed: Seed for the train/test split.
+        Defaults to None, which falls back to ``seed``.
+    :type train_test_seed: int, optional
+    :param validation_seed: Seed for the validation splits (both the split of
+        the training data into validation-train and validation data,
+        and the validation fold-in/hold-out split).
+        Defaults to None, which falls back to ``seed``.
+    :type validation_seed: int, optional
+    :param test_split_seed: Seed for the test fold-in/hold-out split.
+        Defaults to None, which falls back to ``seed``.
+    :type test_split_seed: int, optional
     """
 
-    def __init__(self, validation=False, seed=None):
+    def __init__(
+        self,
+        validation=False,
+        seed=None,
+        train_test_seed: Optional[int] = None,
+        validation_seed: Optional[int] = None,
+        test_split_seed: Optional[int] = None,
+    ):
         if seed is None:
             # Set seed if it was not set before.
             seed = np.random.get_state()[1][0]
         self.seed = seed
+        self.train_test_seed = train_test_seed if train_test_seed is not None else self.seed
+        self.validation_seed = validation_seed if validation_seed is not None else self.seed
+        self.test_split_seed = test_split_seed if test_split_seed is not None else self.seed
         self.validation = validation
         if validation:
-            self.validation_splitter = StrongGeneralizationSplitter(0.8, seed=self.seed)
+            self.validation_splitter = StrongGeneralizationSplitter(0.8, seed=self.validation_seed)
 
     @abstractmethod
     def _split(self, data_m: InteractionMatrix) -> None:
