@@ -6,6 +6,7 @@
 #   Robin Verachtert
 
 from collections import defaultdict
+import json
 import logging
 import os
 from typing import Tuple, Union, Dict, List, Any, Optional, Callable
@@ -102,7 +103,22 @@ class Pipeline(object):
     :type post_processor: Postprocessor
     :param remove_history: Boolean to configure if the recommendations can include items that were previously interacted with.
     :type remove_history: Boolean
+    :param optimisation_all_metrics: If True, all configured metrics are calculated for every
+        validation run during hyperparameter optimisation, in addition to the optimisation metric.
+        These extra values are stored in the optimisation results so they can be inspected afterwards.
+        The optimisation metric is still the only metric used to select the best hyperparameters.
+        Defaults to False.
+    :type optimisation_all_metrics: bool
+    :param incremental_save: If True, intermediate results are appended to disk as soon as they
+        become available, rather than only at the end. Each validation trial result is appended
+        to ``optimisation_results.jsonl`` and each final test metric is appended to
+        ``results.jsonl`` in the ``results_directory``. This protects against losing all results
+        if the pipeline terminates before completion. Defaults to False.
+    :type incremental_save: bool
     """
+
+    OPTIMISATION_RESULTS_FILE = "optimisation_results.jsonl"
+    RESULTS_FILE = "results.jsonl"
 
     def __init__(
         self,
@@ -116,6 +132,8 @@ class Pipeline(object):
         optimisation_metric_entry: Union[OptimisationMetricEntry, None],
         post_processor: Postprocessor,
         remove_history: bool,
+        optimisation_all_metrics: bool = False,
+        incremental_save: bool = False,
     ):
         self.results_directory = results_directory
         self.algorithm_entries = algorithm_entries
@@ -127,10 +145,29 @@ class Pipeline(object):
         self.optimisation_metric_entry = optimisation_metric_entry
         self.post_processor = post_processor
         self.remove_history = remove_history
+        self.optimisation_all_metrics = optimisation_all_metrics
+        self.incremental_save = incremental_save
 
         self._metric_acc = MetricAccumulator()
         # Hyperparameter optimisation results are accumulated
         self._optimisation_results = []
+
+        if self.incremental_save:
+            os.makedirs(self.results_directory, exist_ok=True)
+
+    def _append_jsonl(self, filename: str, record: Dict[str, Any]) -> None:
+        """Append a single JSON record as one line to ``{results_directory}/{filename}``.
+
+        The file is opened, written, flushed and closed for every record so that
+        partial results survive an unexpected pipeline termination.
+        """
+        path = os.path.join(self.results_directory, filename)
+        try:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, default=str) + "\n")
+                f.flush()
+        except OSError as e:
+            logger.warning(f"Could not append intermediate result to {path}: {e}")
 
     def run(self):
         """Runs the pipeline."""
@@ -159,6 +196,19 @@ class Pipeline(object):
                     metric = metric_cls()
                 metric.calculate(self.test_data_out.binary_values, X_pred)
                 self._metric_acc.add(metric, algorithm.identifier, metric.name)
+                logger.info(
+                    f"Test metric {metric.name} = {metric.value} for {algorithm.identifier}"
+                )
+                if self.incremental_save:
+                    self._append_jsonl(
+                        self.RESULTS_FILE,
+                        {
+                            "algorithm": algorithm_entry.name,
+                            "identifier": algorithm.identifier,
+                            "metric": metric.name,
+                            "value": metric.value,
+                        },
+                    )
 
     def _train(self, algorithm: Algorithm, training_data: InteractionMatrix) -> Algorithm:
         if isinstance(algorithm, TorchMLAlgorithm):
@@ -202,6 +252,42 @@ class Pipeline(object):
                 "params": {**args, **algorithm_entry.params},
                 optimisation_metric.name: optimisation_metric.value,
             }
+
+            # Optionally compute all configured metrics on the validation data
+            # so that all metric values are available for inspection in the
+            # optimisation results, in addition to the optimisation metric.
+            if self.optimisation_all_metrics:
+                for metric_entry in self.metric_entries:
+                    metric_cls = METRIC_REGISTRY.get(metric_entry.name)
+                    if metric_entry.K is not None:
+                        metric = metric_cls(K=metric_entry.K)
+                    else:
+                        metric = metric_cls()
+                    try:
+                        metric.calculate(validation_data_out.binary_values, X_pred_val)
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not calculate metric {metric.name} on validation data: {e}"
+                        )
+                        continue
+                    # Avoid overwriting the optimisation metric entry.
+                    if metric.name not in result:
+                        result[metric.name] = metric.value
+
+            # Log the validation metric for this trial so progress is visible in
+            # the log even if the pipeline is terminated before the end.
+            logger.info(
+                f"Validation {optimisation_metric.name} = {optimisation_metric.value} "
+                f"for {algorithm.identifier}"
+            )
+
+            # Persist this single trial result to disk immediately so that
+            # hyperparameter optimisation progress is not lost if the pipeline
+            # terminates before completion.
+            if self.incremental_save:
+                # Strip non-serialisable / hyperopt-internal keys.
+                serialisable = {k: v for k, v in result.items() if k != "status"}
+                self._append_jsonl(self.OPTIMISATION_RESULTS_FILE, serialisable)
 
             # Hyperopt always minimises, so to maximize a metric we just turn it negative.
             if not self.optimisation_metric_entry.minimise:

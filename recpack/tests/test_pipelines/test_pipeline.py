@@ -5,6 +5,9 @@
 #   Lien Michiels
 #   Robin Verachtert
 
+import json
+import logging
+import os
 import time
 from unittest.mock import MagicMock, patch, call
 
@@ -87,6 +90,37 @@ def test_pipeline_optimisation_gridsearch(
     assert metrics.shape[0] == len(pipeline.algorithm_entries)
     assert metrics.shape[1] == len(pipeline.metric_entries)
     assert pipeline.optimisation_results.shape[0] == gridsize
+
+
+def test_pipeline_optimisation_results_default_single_metric(pipeline_builder_optimisation):
+    """By default only the optimisation metric is recorded for validation runs."""
+    pipeline = pipeline_builder_optimisation.build()
+    pipeline.run()
+
+    opt_results = pipeline.optimisation_results
+    # Optimisation metric is CalibratedRecallK_2; CalibratedRecallK_3 is also configured
+    # but should NOT appear in the optimisation results when the flag is off.
+    assert "CalibratedRecallK_2" in opt_results.columns
+    assert "CalibratedRecallK_3" not in opt_results.columns
+
+
+def test_pipeline_optimisation_results_all_metrics(pipeline_builder_optimisation):
+    """When optimisation_all_metrics is enabled, every configured metric is
+    calculated and stored for each validation run."""
+    pipeline_builder_optimisation.set_optimisation_all_metrics(True)
+    pipeline = pipeline_builder_optimisation.build()
+    pipeline.run()
+
+    opt_results = pipeline.optimisation_results
+    assert "CalibratedRecallK_2" in opt_results.columns
+    assert "CalibratedRecallK_3" in opt_results.columns
+    # All values should be populated (no NaN)
+    assert opt_results["CalibratedRecallK_2"].notna().all()
+    assert opt_results["CalibratedRecallK_3"].notna().all()
+    # Best-parameter selection still uses only the optimisation metric, so the
+    # final test-set evaluation should still produce a regular metrics table.
+    metrics = pipeline.get_metrics()
+    assert metrics.shape[0] == len(pipeline.algorithm_entries)
 
 
 def test_pipeline_with_filters_applied(pipeline_builder):
@@ -209,3 +243,98 @@ def test_pipeline_optimisation_results_output(pipeline_builder_optimisation_no_a
 
     # EASE optimial hyperparameter asserts
     assert "l2" in pipe.optimisation_results["params"].iloc[-1]
+
+
+def test_pipeline_logs_validation_metric(pipeline_builder_optimisation, caplog):
+    """The validation metric should be logged for every trial so progress is
+    visible even if the pipeline is terminated before it completes."""
+    pipeline = pipeline_builder_optimisation.build()
+    with caplog.at_level(logging.INFO, logger="recpack"):
+        pipeline.run()
+
+    validation_log_messages = [
+        rec.message for rec in caplog.records if "Validation" in rec.message
+    ]
+    # 3 ItemKNN trials + 2 EASE trials = 5 validation log lines
+    assert len(validation_log_messages) == 5
+    for msg in validation_log_messages:
+        assert "CalibratedRecallK_2" in msg
+
+
+def test_pipeline_logs_test_metric(pipeline_builder, caplog):
+    """Final test metrics should also be logged so they appear in the run log."""
+    pipeline = pipeline_builder.build()
+    with caplog.at_level(logging.INFO, logger="recpack"):
+        pipeline.run()
+
+    test_log_messages = [
+        rec.message for rec in caplog.records if "Test metric" in rec.message
+    ]
+    # 2 algorithms x 2 metrics = 4 test metric log lines
+    assert len(test_log_messages) == 4
+
+
+def test_pipeline_incremental_save_writes_test_metrics(pipeline_builder, tmp_path):
+    """When incremental_save is enabled, each test metric should be appended
+    to results.jsonl as soon as it is computed."""
+    pipeline_builder.base_path = str(tmp_path)
+    pipeline_builder.results_directory = f"{pipeline_builder.base_path}/{pipeline_builder.folder_name}"
+    pipeline_builder.set_incremental_save(True)
+
+    pipeline = pipeline_builder.build()
+    pipeline.run()
+
+    results_file = os.path.join(pipeline.results_directory, "results.jsonl")
+    assert os.path.exists(results_file)
+
+    with open(results_file, "r", encoding="utf-8") as f:
+        lines = [json.loads(l) for l in f if l.strip()]
+
+    # 2 algorithms x 2 metrics = 4 records
+    assert len(lines) == 4
+    for record in lines:
+        assert "algorithm" in record
+        assert "identifier" in record
+        assert "metric" in record
+        assert "value" in record
+
+
+def test_pipeline_incremental_save_writes_optimisation_results(pipeline_builder_optimisation, tmp_path):
+    """When incremental_save is enabled, each validation trial should be
+    appended to optimisation_results.jsonl as it runs."""
+    pipeline_builder_optimisation.base_path = str(tmp_path)
+    pipeline_builder_optimisation.results_directory = (
+        f"{pipeline_builder_optimisation.base_path}/{pipeline_builder_optimisation.folder_name}"
+    )
+    pipeline_builder_optimisation.set_incremental_save(True)
+
+    pipeline = pipeline_builder_optimisation.build()
+    pipeline.run()
+
+    opt_file = os.path.join(pipeline.results_directory, "optimisation_results.jsonl")
+    assert os.path.exists(opt_file)
+
+    with open(opt_file, "r", encoding="utf-8") as f:
+        lines = [json.loads(l) for l in f if l.strip()]
+
+    # 3 ItemKNN trials + 2 EASE trials = 5 records
+    assert len(lines) == 5
+    for record in lines:
+        assert "algorithm" in record
+        assert "identifier" in record
+        assert "params" in record
+        assert "loss" in record
+
+
+def test_pipeline_incremental_save_disabled_writes_nothing(pipeline_builder, tmp_path):
+    """When incremental_save is disabled (default), no jsonl files should be created."""
+    pipeline_builder.base_path = str(tmp_path)
+    pipeline_builder.results_directory = f"{pipeline_builder.base_path}/{pipeline_builder.folder_name}"
+
+    pipeline = pipeline_builder.build()
+    pipeline.run()
+
+    # Files should not exist; results_directory may not even have been created.
+    if os.path.isdir(pipeline.results_directory):
+        assert not os.path.exists(os.path.join(pipeline.results_directory, "results.jsonl"))
+        assert not os.path.exists(os.path.join(pipeline.results_directory, "optimisation_results.jsonl"))
