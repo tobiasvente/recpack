@@ -94,6 +94,18 @@ user to reconstruct the original interaction matrix R = UV^T.
     BPRMF
 
 
+Graph Convolution Algorithms
+----------------------------
+
+Graph convolution algorithms learn user and item representations
+by propagating information over the user-item interaction graph.
+
+.. autosummary::
+    :toctree: generated/
+
+    LightGCN
+
+
 Autoencoder Algorithms
 ------------------------
 
@@ -258,6 +270,7 @@ from recpack.algorithms.slim import SLIM
 from recpack.algorithms.nearest_neighbour import ItemKNN, ItemPNN
 from recpack.algorithms.kunn import KUNN
 from recpack.algorithms.bprmf import BPRMF
+from recpack.algorithms.lightgcn import LightGCN
 
 # from recpack.algorithms.metric_learning.cml import CML
 
