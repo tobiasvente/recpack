@@ -13,7 +13,8 @@ import scipy.sparse
 from unittest.mock import MagicMock
 
 
-from recpack.algorithms.base import Algorithm
+from recpack.algorithms.base import Algorithm, TimeAwareAlgorithm
+from recpack.matrix import InteractionMatrix
 from recpack.algorithms import (
     ItemKNN,
     MultVAE,
@@ -167,3 +168,45 @@ def test_sampled_validation(algo_class, larger_mat):
         val_out, X_pred = c.args
         assert len(set(val_out.nonzero()[0])) == N_SAMPLES
         assert len(set(X_pred.nonzero()[0])) == N_SAMPLES
+
+
+class _DummyTimeAware(TimeAwareAlgorithm):
+    """Minimal TimeAwareAlgorithm used to test the wrapper behaviour."""
+
+    def _fit(self, X):
+        self.received_fit_type_ = type(X)
+        self.max_timestamp_ = X.timestamps.max()
+
+    def _predict(self, X):
+        self.received_predict_type_ = type(X)
+        return scipy.sparse.csr_matrix(X.binary_values)
+
+
+def test_time_aware_algorithm_passes_interaction_matrix_to_fit_and_predict(matrix_sessions):
+    algo = _DummyTimeAware()
+
+    algo.fit(matrix_sessions)
+    assert algo.received_fit_type_ == InteractionMatrix
+    assert algo.max_timestamp_ == matrix_sessions.timestamps.max()
+
+    X_pred = algo.predict(matrix_sessions)
+    assert algo.received_predict_type_ == InteractionMatrix
+    assert isinstance(X_pred, scipy.sparse.csr_matrix)
+
+
+def test_time_aware_algorithm_rejects_csr_matrix(matrix_sessions):
+    algo = _DummyTimeAware()
+
+    with pytest.raises(TypeError) as type_error:
+        algo.fit(matrix_sessions.binary_values)
+
+    assert type_error.match(".* requires Interaction Matrix as input.")
+
+
+def test_time_aware_algorithm_rejects_interaction_matrix_without_timestamps(X_in):
+    algo = _DummyTimeAware()
+
+    with pytest.raises(ValueError) as value_error:
+        algo.fit(InteractionMatrix.from_csr_matrix(X_in))
+
+    assert value_error.match(".* requires timestamp information in the InteractionMatrix.")

@@ -10,7 +10,8 @@ import warnings
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix
 
-from recpack.algorithms.base import Algorithm
+from recpack.algorithms.base import Algorithm, TimeAwareAlgorithm
+from recpack.matrix import InteractionMatrix
 from recpack.util import get_top_K_values
 
 
@@ -112,6 +113,76 @@ class Popularity(Algorithm):
         """For each user predict the K most popular items"""
 
         users = list(set(X.nonzero()[0]))
+
+        X_pred = lil_matrix(X.shape)
+        X_pred[users] = self.sorted_scores_
+
+        return X_pred.tocsr()
+
+
+class TimeAwarePopularity(TimeAwareAlgorithm):
+    """Baseline algorithm recommending the most popular items,
+    where each interaction is weighted by its recency.
+
+    During training each interaction is given an exponentially decayed weight
+
+    .. math::
+
+        w(t) = e^{- \\frac{t_{max} - t}{decay}}
+
+    where :math:`t_{max}` is the maximal timestamp in the training data.
+    The score of an item is the sum of the weights of its interactions,
+    normalized by the maximal score over items,
+    so all scores fall in the interval [0, 1].
+
+    If ``decay`` is None or not strictly positive,
+    every interaction gets weight 1,
+    which makes the ranking identical to the plain
+    :class:`Popularity` algorithm.
+
+    :param K: How many items to recommend when predicting, defaults to 200
+    :type K: int, optional
+    :param decay: Time scale of the exponential decay, in the same unit
+        as the timestamps in the InteractionMatrix
+        (e.g. ``decay=86400.`` is a one day time scale for epoch timestamps in seconds).
+        If None, no decay is applied. Defaults to None.
+    :type decay: float, optional
+    """
+
+    def __init__(self, K: int = 200, decay: Optional[float] = None):
+        super().__init__()
+        self.K = K
+        self.decay = decay
+
+    def _fit(self, X: InteractionMatrix) -> "TimeAwarePopularity":
+        timestamps = X.timestamps
+
+        if self.decay is not None and self.decay > 0:
+            weights = np.exp(-(timestamps.max() - timestamps) / self.decay)
+            item_scores = weights.groupby(level=1).sum()
+        else:
+            # Weight 1 per interaction, equivalent to plain Popularity counts.
+            item_scores = timestamps.groupby(level=1).count()
+
+        num_items = X.shape[1]
+        scores = np.zeros(num_items)
+        scores[item_scores.index.values] = item_scores.values
+        scores = scores / scores.max()
+
+        if num_items < self.K:
+            warnings.warn("K is larger than the number of items.", UserWarning)
+
+        K = min(self.K, num_items)
+        ind = np.argpartition(scores, -K)[-K:]
+        a = np.zeros(num_items)
+        a[ind] = scores[ind]
+        self.sorted_scores_ = a
+        return self
+
+    def _predict(self, X: InteractionMatrix) -> csr_matrix:
+        """For each active user predict the K most popular scores"""
+
+        users = list(X.active_users)
 
         X_pred = lil_matrix(X.shape)
         X_pred[users] = self.sorted_scores_
