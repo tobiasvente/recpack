@@ -11,9 +11,13 @@ from scipy.sparse import csr_matrix
 def sparse_inverse_nonzero(a: csr_matrix) -> csr_matrix:
     """Invert nonzero elements of a `scipy.sparse.csr_matrix`.
 
+    Zero entries remain zero, and the input is not modified. Integer matrices
+    may need to be converted to floating point before use because reciprocal
+    values are assigned using the input dtype.
+
     :param a: Matrix to invert.
     :type a: csr_matrix
-    :return: Matrix with nonzero elements inverted.
+    :return: Copy of ``a`` with stored values replaced by their reciprocals.
     :rtype: csr_matrix
     """
     inv_a = a.copy()
@@ -24,7 +28,8 @@ def sparse_inverse_nonzero(a: csr_matrix) -> csr_matrix:
 def sparse_divide_nonzero(a: csr_matrix, b: csr_matrix) -> csr_matrix:
     """Elementwise divide of nonzero elements of a by nonzero elements of b.
 
-    Elements that were zero in either a or b are zero in the resulting matrix.
+    Elements that are zero in either ``a`` or ``b`` are zero in the resulting
+    matrix. The matrices must have compatible shapes.
 
     :param a: Numerator.
     :type a: csr_matrix

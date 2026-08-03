@@ -233,6 +233,11 @@ Use these to simplify certain tasks (such as batching) when creating a new algor
     sample_rows
     naive_sparse2tensor
     naive_tensor2sparse
+    get_users
+    swish
+    log_norm_pdf
+    union_csr_matrices
+    invert
 """
 
 
