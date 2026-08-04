@@ -22,7 +22,8 @@ from recpack.algorithms.nearest_neighbour import (
     compute_jaccard_similarity,
     compute_overlap_similarity,
     compute_pearson_similarity,
-    compute_lift_similarity
+    compute_lift_similarity,
+    compute_pmi_similarity,
 )
 
 
@@ -295,6 +296,24 @@ def test_item_knn_lift(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
+def test_item_knn_pmi(data):
+    algo = ItemKNN(K=2, similarity="pmi")
+
+    algo.fit(data)
+    # PMI is computed as log(lift).
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 0, np.log(4 / 3)],
+            [0, 0, np.log(4 / 3)],
+            [np.log(4 / 3), np.log(4 / 3), 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
 @pytest.mark.parametrize(
     "K, pdf",
     [
@@ -371,6 +390,17 @@ def test_item_pnn_overlap(data):
 
 def test_item_pnn_lift(data):
     algo = ItemPNN(K=1, similarity="lift", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_pmi(data):
+    algo = ItemPNN(K=1, similarity="pmi", pdf="softmax_empirical")
 
     algo.fit(data)
 
@@ -516,6 +546,26 @@ def test_compute_lift_similarity():
         [0, 1, 3 / 4],
         [1, 0, 1],
         [3 / 4, 1, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_pmi_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_pmi_similarity(X)
+
+    expected_similarity = [
+        [0, 0, np.log(3 / 4)],
+        [0, 0, 0],
+        [np.log(3 / 4), 0, 0],
     ]
 
     np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)

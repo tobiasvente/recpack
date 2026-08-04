@@ -267,6 +267,30 @@ def compute_lift_similarity(X: csr_matrix) -> csr_matrix:
     return item_lift_similarities
 
 
+def compute_pmi_similarity(X: csr_matrix) -> csr_matrix:
+    """Compute pointwise mutual information (PMI) between items.
+
+    PMI between item i and j is computed as:
+
+    .. math::
+        sim(i,j) = \\log \\frac{Support(i \\cap j)}{Support(i)Support(j)}
+
+    This is equivalent to the natural logarithm of lift.
+    Self similarity is removed.
+
+    :param X: user x item matrix with scores per user, item pair.
+    :type X: csr_matrix
+    :return: item-item similarity matrix
+    :rtype: csr_matrix
+    """
+    item_pmi_similarities = compute_lift_similarity(X)
+    item_pmi_similarities.data = np.log(item_pmi_similarities.data)
+
+    item_pmi_similarities.eliminate_zeros()
+
+    return item_pmi_similarities
+
+
 class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     """Item K Nearest Neighbours model.
 
@@ -276,8 +300,8 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
 
     For each item the K most similar items are computed during fit.
     Similarity parameter decides how to compute the similarity between two items.
-    Supported options are: ``"cosine"``, ``"conditional_probability"``, ``"jaccard"``, ``"dice"``, ``"overlap"``
-    and ``"lift"``.
+    Supported options are: ``"cosine"``, ``"conditional_probability"``, ``"jaccard"``, ``"dice"``, ``"overlap"``,
+    ``"lift"``, and ``"pmi"``.
 
     Cosine similarity between item i and j is computed as
 
@@ -319,6 +343,11 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     .. math::
         sim(i,j) = \\frac{Support(i \\cap j)}{Support(i)Support(j)}
 
+    PMI similarity between item i and j is computed as:
+
+    .. math::
+        sim(i,j) = \\log \\frac{Support(i \\cap j)}{Support(i)Support(j)}
+
     If sim_normalize is True, the scores are normalized per predictive item,
     making sure the sum of each row in the similarity matrix is 1.
 
@@ -327,7 +356,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
         Defaults to 200
     :type K: int, optional
     :param similarity: Which similarity measure to use,
-        can be one of ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift"],
+        can be one of ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift", "pmi"],
         defaults to "cosine"
     :type similarity: str, optional
     :param pop_discount: Power applied to the comparing item in the denominator,
@@ -346,7 +375,7 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
     :raises ValueError: If an unsupported similarity measure is passed.
     """
 
-    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift"]
+    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift", "pmi"]
     """The supported similarity options"""
 
     def __init__(
@@ -401,6 +430,8 @@ class ItemKNN(TopKItemSimilarityMatrixAlgorithm):
             item_similarities = compute_overlap_similarity(X)
         elif self.similarity == "lift":
             item_similarities = compute_lift_similarity(X)
+        elif self.similarity == "pmi":
+            item_similarities = compute_pmi_similarity(X)
 
         item_similarities = get_top_K_values(item_similarities, K=self.K)
 
@@ -425,8 +456,8 @@ class ItemPNN(ItemKNN):
     For each item K neighbours are selected either uniformly or based on the empirical
     distribution of the items (or a softmax thereof).
     Similarity parameter decides how to compute the similarity between two items.
-    Supported options are: ``"cosine"``, ``"conditional_probability"``, ``"jaccard"``, ``"dice"``, ``"overlap"``
-    and ``"lift"``.
+    Supported options are: ``"cosine"``, ``"conditional_probability"``, ``"jaccard"``, ``"dice"``, ``"overlap"``,
+    ``"lift"``, and ``"pmi"``.
 
     - Cosine similarity between item i and j is computed as
       the ``count(i and j) / (count(i)*count(j))``.
@@ -441,6 +472,8 @@ class ItemPNN(ItemKNN):
       ``count(i and j) / min(count(i), count(j))``.
     - Lift similarity between item i and j is computed as
       ``Support(i and j) / (Support(i) * Support(j))``.
+    - PMI similarity between item i and j is computed as
+      ``log(Support(i and j) / (Support(i) * Support(j)))``.
 
     If sim_normalize is True, the scores are normalized per predictive item,
     making sure the sum of each row in the similarity matrix is 1.
@@ -450,7 +483,7 @@ class ItemPNN(ItemKNN):
         Defaults to 200
     :type K: int, optional
     :param similarity: Which similarity measure to use,
-        can be one of ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift"],
+        can be one of ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift", "pmi"],
         defaults to "cosine"
     :type similarity: str, optional
     :param pop_discount: Power applied to the comparing item in the denominator,
@@ -547,6 +580,8 @@ class ItemPNN(ItemKNN):
             item_similarities = compute_overlap_similarity(X)
         elif self.similarity == "lift":
             item_similarities = compute_lift_similarity(X)
+        elif self.similarity == "pmi":
+            item_similarities = compute_pmi_similarity(X)
 
         self.pdf_ = self._compute_pdf(self.pdf, item_similarities)
 
