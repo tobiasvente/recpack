@@ -4,6 +4,7 @@
 # Author:
 #   Lien Michiels
 #   Robin Verachtert
+#   Marouan El Marnissi
 
 import math
 import operator
@@ -17,7 +18,12 @@ from recpack.matrix import to_binary
 from recpack.algorithms.nearest_neighbour import (
     ItemPNN,
     compute_conditional_probability,
+    compute_dice_similarity,
+    compute_jaccard_similarity,
+    compute_overlap_similarity,
     compute_pearson_similarity,
+    compute_lift_similarity,
+    compute_pmi_similarity,
 )
 
 
@@ -181,6 +187,133 @@ def test_item_knn_conditional_probability_w_pop_discount(data, pop_discount):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
+def test_item_knn_jaccard(data):
+    algo = ItemKNN(K=2, similarity="jaccard")
+
+    algo.fit(data)
+    # data matrix looks like
+    # 0 1 1
+    # 1 0 1
+    # 1 1 1
+
+    # item counts = [2, 2, 3]
+    # intersections =
+    # 2 1 2
+    # 1 2 2
+    # 2 2 3
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 1 / 3, 2 / 3],
+            [1 / 3, 0, 2 / 3],
+            [2 / 3, 2 / 3, 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_item_knn_dice(data):
+    algo = ItemKNN(K=2, similarity="dice")
+
+    algo.fit(data)
+    # data matrix looks like
+    # 0 1 1
+    # 1 0 1
+    # 1 1 1
+
+    # item counts = [2, 2, 3]
+    # intersections =
+    # 2 1 2
+    # 1 2 2
+    # 2 2 3
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 1 / 2, 4 / 5],
+            [1 / 2, 0, 4 / 5],
+            [4 / 5, 4 / 5, 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_item_knn_overlap(data):
+    algo = ItemKNN(K=2, similarity="overlap")
+
+    algo.fit(data)
+    # data matrix looks like
+    # 0 1 1
+    # 1 0 1
+    # 1 1 1
+
+    # item counts = [2, 2, 3]
+    # intersections =
+    # 2 1 2
+    # 1 2 2
+    # 2 2 3
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 1 / 2, 1],
+            [1 / 2, 0, 1],
+            [1, 1, 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_item_knn_lift(data):
+    algo = ItemKNN(K=2, similarity="lift")
+
+    algo.fit(data)
+    # data matrix looks like
+    # 0 1 1
+    # 1 0 1
+    # 1 1 1
+    # 0 0 0
+
+    # item counts = [2, 2, 3]
+    # intersections =
+    # 2 1 2
+    # 1 2 2
+    # 2 2 3
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 1, 4 / 3],
+            [1, 0, 4 / 3],
+            [4 / 3, 4 / 3, 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_item_knn_pmi(data):
+    algo = ItemKNN(K=2, similarity="pmi")
+
+    algo.fit(data)
+    # PMI is computed as log(lift).
+
+    # fmt: off
+    expected_similarities = np.array(
+        [
+            [0, 0, np.log(4 / 3)],
+            [0, 0, np.log(4 / 3)],
+            [np.log(4 / 3), np.log(4 / 3), 0]
+        ]
+    )
+    # fmt: on
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
 @pytest.mark.parametrize(
     "K, pdf",
     [
@@ -220,6 +353,61 @@ def test_item_pnn_uniform_larger(larger_matrix):
     sims2 = algo.similarity_matrix_.copy()
 
     assert np.any(np.not_equal(sims.toarray(), sims2.toarray()))
+
+
+def test_item_pnn_jaccard(data):
+    algo = ItemPNN(K=1, similarity="jaccard", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_dice(data):
+    algo = ItemPNN(K=1, similarity="dice", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_overlap(data):
+    algo = ItemPNN(K=1, similarity="overlap", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_lift(data):
+    algo = ItemPNN(K=1, similarity="lift", pdf="empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+
+
+def test_item_pnn_pmi(data):
+    algo = ItemPNN(K=1, similarity="pmi", pdf="softmax_empirical")
+
+    algo.fit(data)
+
+    sims = algo.similarity_matrix_
+    binary_sims = to_binary(sims)
+
+    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
 
 
 @pytest.mark.parametrize(
@@ -279,6 +467,106 @@ def test_conditional_probability():
         [(1 + 1) / (3 * 2 ** 0.1), 0],
     ]
     # fmt: on
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_jaccard_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_jaccard_similarity(X)
+
+    expected_similarity = [
+        [0, 2 / 3, 1 / 3],
+        [2 / 3, 0, 2 / 3],
+        [1 / 3, 2 / 3, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_dice_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_dice_similarity(X)
+
+    expected_similarity = [
+        [0, 4 / 5, 1 / 2],
+        [4 / 5, 0, 4 / 5],
+        [1 / 2, 4 / 5, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_overlap_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_overlap_similarity(X)
+
+    expected_similarity = [
+        [0, 1, 1 / 2],
+        [1, 0, 1],
+        [1 / 2, 1, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_lift_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_lift_similarity(X)
+
+    expected_similarity = [
+        [0, 1, 3 / 4],
+        [1, 0, 1],
+        [3 / 4, 1, 0],
+    ]
+
+    np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
+
+
+def test_compute_pmi_similarity():
+    # fmt: off
+    X = csr_matrix([
+        [2, 1, 0],
+        [1, 2, 3],
+        [0, 5, 1],
+    ])
+    # fmt: on
+
+    similarity = compute_pmi_similarity(X)
+
+    expected_similarity = [
+        [0, 0, np.log(3 / 4)],
+        [0, 0, 0],
+        [np.log(3 / 4), 0, 0],
+    ]
 
     np.testing.assert_array_almost_equal(similarity.toarray(), expected_similarity)
 
