@@ -9,7 +9,7 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name="recpack",
     version="0.3.6",
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     packages=find_packages(),
     install_requires=[
         "numpy>=1.21.2, ==1.*; python_version < '3.13'",
@@ -20,7 +20,7 @@ setup(
         "PyYAML>=6.0.1, ==6.*",
         "torch>=2.1.1, ==2.*",
         "tqdm>=4.46.0, ==4.*",
-        "hyperopt>=0.2.7, ==0.2.*",
+        "hyperopt>=0.3.0, ==0.3.*",
     ],
     extras_require={
         "doc": ["sphinx==4.*", "sphinx-rtd-theme==1.*"],

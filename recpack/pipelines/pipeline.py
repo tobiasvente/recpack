@@ -23,8 +23,7 @@ from recpack.pipelines.registries import (
     MetricEntry,
     OptimisationMetricEntry,
 )
-from recpack.pipelines.hyperparameter_optimisation import ensure_pkg_resources_compat, HyperoptInfo, GridSearchInfo
-ensure_pkg_resources_compat()
+from recpack.pipelines.hyperparameter_optimisation import HyperoptInfo, GridSearchInfo
 from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
 from recpack.postprocessing.postprocessors import Postprocessor
 
