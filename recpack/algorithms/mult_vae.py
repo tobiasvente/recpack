@@ -17,7 +17,7 @@ import numpy as np
 
 from recpack.algorithms.base import TorchMLAlgorithm
 from recpack.algorithms.loss_functions import vae_loss
-from recpack.algorithms.util import csr_from_rows, naive_sparse2tensor, get_batches
+from recpack.algorithms.util import naive_sparse2tensor, get_batches
 
 logger = logging.getLogger("recpack")
 
@@ -234,7 +234,9 @@ class MultVAE(TorchMLAlgorithm):
         :type X: csr_matrix
         :param users: users selected for recommendation
         :type users: List[int]
-        :return: Sparse matrix of scores per user item pair.
+        :return: Sparse matrix of scores per user item pair,
+            compact with shape (len(users), num_items):
+            row i corresponds to users[i].
         :rtype: csr_matrix
         """
         active_users = X[users]
@@ -245,7 +247,7 @@ class MultVAE(TorchMLAlgorithm):
 
         scores = out_tensor.detach().cpu().numpy()
 
-        return csr_from_rows(csr_matrix(scores), users, X.shape)
+        return csr_matrix(scores)
 
 
 class MultiVAETorch(nn.Module):

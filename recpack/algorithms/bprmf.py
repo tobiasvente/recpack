@@ -20,7 +20,6 @@ import torch.optim as optim
 from recpack.algorithms.base import TorchMLAlgorithm
 from recpack.algorithms.loss_functions import bpr_loss
 from recpack.algorithms.samplers import BootstrapSampler
-from recpack.algorithms.util import csr_from_rows
 
 logger = logging.getLogger("recpack")
 
@@ -158,7 +157,9 @@ class BPRMF(TorchMLAlgorithm):
         :type X: csr_matrix
         :param users: users selected for recommendation
         :type users: List[int]
-        :return: Sparse matrix of scores per user item pair.
+        :return: Sparse matrix of scores per user item pair,
+            compact with shape (len(users), num_items):
+            row i corresponds to users[i].
         :rtype: csr_matrix
         """
 
@@ -167,7 +168,7 @@ class BPRMF(TorchMLAlgorithm):
 
         scores = self.model_(user_tensor, item_tensor).detach().cpu().numpy()
 
-        return csr_from_rows(csr_matrix(scores), users, X.shape)
+        return csr_matrix(scores)
 
     def _train_epoch(self, train_data: csr_matrix):
         """train a single epoch. Uses sampler to generate samples,

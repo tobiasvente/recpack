@@ -17,7 +17,7 @@ import torch
 import torch.optim as optim
 
 from recpack.algorithms.base import TorchMLAlgorithm
-from recpack.algorithms.util import csr_from_rows, swish, log_norm_pdf, naive_sparse2tensor, get_batches
+from recpack.algorithms.util import swish, log_norm_pdf, naive_sparse2tensor, get_batches
 
 
 logger = logging.getLogger("recpack")
@@ -278,7 +278,9 @@ class RecVAE(TorchMLAlgorithm):
         :type X: csr_matrix
         :param users: users selected for recommendation
         :type users: List[int]
-        :return: Sparse matrix of scores per user item pair.
+        :return: Sparse matrix of scores per user item pair,
+            compact with shape (len(users), num_items):
+            row i corresponds to users[i].
         :rtype: csr_matrix
         """
         active_users = X[users]
@@ -289,7 +291,7 @@ class RecVAE(TorchMLAlgorithm):
 
         scores = out_tensor.detach().cpu().numpy()
 
-        return csr_from_rows(csr_matrix(scores), users, X.shape)
+        return csr_matrix(scores)
 
 
 class CompositePrior(nn.Module):

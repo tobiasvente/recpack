@@ -557,7 +557,9 @@ class TorchMLAlgorithm(Algorithm):
         :type X: csr_matrix
         :param users: users selected for recommendation
         :type users: List[int]
-        :return: Sparse matrix of scores per user item pair.
+        :return: Sparse matrix of scores per user item pair,
+            compact with shape (len(users), num_items): row i corresponds
+            to users[i], not to global user id i.
         :rtype: csr_matrix
         """
         raise NotImplementedError("Please implement this function")
@@ -598,9 +600,9 @@ class TorchMLAlgorithm(Algorithm):
                     batch = csr_from_rows(X[users], users, X.shape)
 
                 batch_users.extend(users)
-                batch_results.append(
-                    self._get_top_k_recommendations(csr_matrix(self._batch_predict(batch, users=users))[users])
-                )
+                # _batch_predict returns a compact (len(users) x num_items)
+                # matrix; the single full-shape assembly happens once, below.
+                batch_results.append(self._get_top_k_recommendations(self._batch_predict(batch, users=users)))
 
         if not batch_results:
             return csr_matrix(X.shape)
