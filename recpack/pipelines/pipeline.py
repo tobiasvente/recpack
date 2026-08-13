@@ -9,6 +9,7 @@ from collections import defaultdict
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Tuple, Union, Dict, List, Any, Optional, Callable
 
 from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
@@ -139,7 +140,7 @@ class Pipeline(object):
         self.incremental_save = incremental_save
 
         if self.incremental_save:
-            os.makedirs(self.results_directory, exist_ok=True)
+            Path(self.results_directory).mkdir(parents=True, exist_ok=True)
 
         self._metric_acc = MetricAccumulator()
         # Hyperparameter optimisation results are accumulated
@@ -152,7 +153,7 @@ class Pipeline(object):
         issue cannot break the run.
         """
         try:
-            with open(os.path.join(self.results_directory, filename), "a") as f:
+            with (Path(self.results_directory) / filename).open("a") as f:
                 f.write(json.dumps(record, default=str) + "\n")
                 f.flush()
         except OSError as e:
