@@ -6,8 +6,10 @@
 #   Robin Verachtert
 
 from collections import defaultdict
+import json
 import logging
 import os
+from pathlib import Path
 from typing import Tuple, Union, Dict, List, Any, Optional, Callable
 
 from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
@@ -102,7 +104,14 @@ class Pipeline(object):
     :type post_processor: Postprocessor
     :param remove_history: Boolean to configure if the recommendations can include items that were previously interacted with.
     :type remove_history: Boolean
+    :param incremental_save: If True, results are appended to JSONL files in the
+        results directory as soon as they are obtained, so partial results
+        survive an unexpected termination. Defaults to False.
+    :type incremental_save: bool, optional
     """
+
+    OPTIMISATION_RESULTS_FILE = "optimisation_results.jsonl"
+    RESULTS_FILE = "results.jsonl"
 
     def __init__(
         self,
@@ -116,6 +125,7 @@ class Pipeline(object):
         optimisation_metric_entry: Union[OptimisationMetricEntry, None],
         post_processor: Postprocessor,
         remove_history: bool,
+        incremental_save: bool = False,
     ):
         self.results_directory = results_directory
         self.algorithm_entries = algorithm_entries
@@ -127,10 +137,27 @@ class Pipeline(object):
         self.optimisation_metric_entry = optimisation_metric_entry
         self.post_processor = post_processor
         self.remove_history = remove_history
+        self.incremental_save = incremental_save
+
+        if self.incremental_save:
+            Path(self.results_directory).mkdir(parents=True, exist_ok=True)
 
         self._metric_acc = MetricAccumulator()
         # Hyperparameter optimisation results are accumulated
         self._optimisation_results = []
+
+    def _append_jsonl(self, filename: str, record: Dict[str, Any]) -> None:
+        """Append a single record as a JSON line to a file in the results directory.
+
+        Failures to write are logged, not raised, so a transient file-system
+        issue cannot break the run.
+        """
+        try:
+            with (Path(self.results_directory) / filename).open("a") as f:
+                f.write(json.dumps(record, default=str) + "\n")
+                f.flush()
+        except OSError as e:
+            logger.warning(f"Could not append result to {filename}: {e}")
 
     def run(self):
         """Runs the pipeline."""
@@ -159,6 +186,19 @@ class Pipeline(object):
                     metric = metric_cls()
                 metric.calculate(self.test_data_out.binary_values, X_pred)
                 self._metric_acc.add(metric, algorithm.identifier, metric.name)
+
+                logger.info(f"Test metric {metric.name} = {metric.value} for {algorithm.identifier}")
+
+                if self.incremental_save:
+                    self._append_jsonl(
+                        self.RESULTS_FILE,
+                        {
+                            "algorithm": algorithm_entry.name,
+                            "identifier": algorithm.identifier,
+                            "metric": metric.name,
+                            "value": metric.value,
+                        },
+                    )
 
     def _train(self, algorithm: Algorithm, training_data: InteractionMatrix) -> Algorithm:
         if isinstance(algorithm, TorchMLAlgorithm):
@@ -202,6 +242,14 @@ class Pipeline(object):
                 "params": {**args, **algorithm_entry.params},
                 optimisation_metric.name: optimisation_metric.value,
             }
+
+            logger.info(
+                f"Validation {optimisation_metric.name} = {optimisation_metric.value} for {algorithm.identifier}"
+            )
+
+            if self.incremental_save:
+                record = {k: v for k, v in result.items() if k != "status"}
+                self._append_jsonl(self.OPTIMISATION_RESULTS_FILE, record)
 
             # Hyperopt always minimises, so to maximize a metric we just turn it negative.
             if not self.optimisation_metric_entry.minimise:

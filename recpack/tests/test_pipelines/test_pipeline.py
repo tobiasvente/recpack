@@ -5,6 +5,9 @@
 #   Lien Michiels
 #   Robin Verachtert
 
+import json
+import logging
+import os
 import time
 from unittest.mock import MagicMock, patch, call
 
@@ -209,3 +212,81 @@ def test_pipeline_optimisation_results_output(pipeline_builder_optimisation_no_a
 
     # EASE optimial hyperparameter asserts
     assert "l2" in pipe.optimisation_results["params"].iloc[-1]
+
+
+def test_pipeline_logs_validation_metric(pipeline_builder_optimisation, caplog):
+    pipeline = pipeline_builder_optimisation.build()
+
+    with caplog.at_level(logging.INFO, logger="recpack"):
+        pipeline.run()
+
+    validation_logs = [
+        r for r in caplog.records if r.levelno == logging.INFO and r.getMessage().startswith("Validation ")
+    ]
+    # One log line per validation trial: 3 for ItemKNN, 2 for EASE
+    assert len(validation_logs) == 5
+
+
+def test_pipeline_logs_test_metric(pipeline_builder, caplog):
+    pipeline = pipeline_builder.build()
+
+    with caplog.at_level(logging.INFO, logger="recpack"):
+        pipeline.run()
+
+    test_metric_logs = [
+        r for r in caplog.records if r.levelno == logging.INFO and r.getMessage().startswith("Test metric ")
+    ]
+    # One log line per (algorithm, metric) pair
+    assert len(test_metric_logs) == len(pipeline.algorithm_entries) * len(pipeline.metric_entries)
+
+
+def test_pipeline_incremental_save_writes_test_metrics(pipeline_builder, tmp_path):
+    pipeline_builder.results_directory = str(tmp_path / "results")
+    pipeline_builder.set_incremental_save(True)
+    pipeline = pipeline_builder.build()
+
+    pipeline.run()
+
+    results_file = os.path.join(pipeline.results_directory, pipeline.RESULTS_FILE)
+    assert os.path.exists(results_file)
+
+    with open(results_file) as f:
+        records = [json.loads(line) for line in f]
+
+    assert len(records) == len(pipeline.algorithm_entries) * len(pipeline.metric_entries)
+    for record in records:
+        assert set(record.keys()) == {"algorithm", "identifier", "metric", "value"}
+        assert isinstance(record["value"], float)
+
+
+def test_pipeline_incremental_save_writes_optimisation_results(pipeline_builder_optimisation, tmp_path):
+    pipeline_builder_optimisation.results_directory = str(tmp_path / "results")
+    pipeline_builder_optimisation.set_incremental_save(True)
+    pipeline = pipeline_builder_optimisation.build()
+
+    pipeline.run()
+
+    optimisation_file = os.path.join(pipeline.results_directory, pipeline.OPTIMISATION_RESULTS_FILE)
+    assert os.path.exists(optimisation_file)
+
+    with open(optimisation_file) as f:
+        records = [json.loads(line) for line in f]
+
+    # One record per validation trial: 3 for ItemKNN, 2 for EASE
+    assert len(records) == 5
+    for record in records:
+        assert "status" not in record
+        assert "loss" in record
+        assert "algorithm" in record
+        assert "identifier" in record
+        assert "params" in record
+
+
+def test_pipeline_incremental_save_disabled_writes_nothing(pipeline_builder_optimisation, tmp_path):
+    pipeline_builder_optimisation.results_directory = str(tmp_path / "results")
+    pipeline = pipeline_builder_optimisation.build()
+
+    pipeline.run()
+
+    assert not os.path.exists(os.path.join(pipeline.results_directory, pipeline.RESULTS_FILE))
+    assert not os.path.exists(os.path.join(pipeline.results_directory, pipeline.OPTIMISATION_RESULTS_FILE))
