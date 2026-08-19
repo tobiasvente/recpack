@@ -10,7 +10,6 @@ import logging
 import os
 from typing import Tuple, Union, Dict, List, Any, Optional, Callable
 
-from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
 import pandas as pd
 from scipy.sparse import csr_array
 from tqdm.auto import tqdm
@@ -25,6 +24,7 @@ from recpack.pipelines.registries import (
     OptimisationMetricEntry,
 )
 from recpack.pipelines.hyperparameter_optimisation import HyperoptInfo, GridSearchInfo
+from hyperopt import Trials, fmin, tpe, space_eval, STATUS_OK
 from recpack.postprocessing.postprocessors import Postprocessor
 
 
