@@ -8,7 +8,7 @@
 import logging
 from typing import List, Optional, Tuple
 
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from tqdm.auto import tqdm
 
@@ -116,16 +116,16 @@ class BPRBase(TorchMLAlgorithm):
             batch_size=self.batch_size,
         )
 
-    def _init_model(self, X: csr_matrix) -> None:
+    def _init_model(self, X: csr_array) -> None:
         self.model_ = self._create_model(X).to(self.device)
         self.optimizer = optim.Adagrad(self.model_.parameters(), lr=self.learning_rate)
 
-    def _create_model(self, X: csr_matrix) -> nn.Module:
+    def _create_model(self, X: csr_array) -> nn.Module:
         raise NotImplementedError()
 
     def _get_batch_scores(
         self,
-        train_data: csr_matrix,
+        train_data: csr_array,
         users: torch.Tensor,
         target_items: torch.Tensor,
         mnar_items: torch.Tensor,
@@ -140,13 +140,13 @@ class BPRBase(TorchMLAlgorithm):
     ) -> torch.Tensor:
         raise NotImplementedError()
 
-    def _train_epoch(self, train_data: csr_matrix):
+    def _train_epoch(self, train_data: csr_array):
         """train a single epoch. Uses sampler to generate samples,
         and loop through them in batches of self.batch_size.
         After each batch, update the parameters according to gradients.
 
         :param train_data: interaction matrix.
-        :type train_data: csr_matrix
+        :type train_data: csr_array
         """
         losses = []
 
@@ -299,7 +299,7 @@ class BPRMF(BPRBase):
         self.lambda_h = lambda_h
         self.lambda_w = lambda_w
 
-    def _create_model(self, X: csr_matrix) -> nn.Module:
+    def _create_model(self, X: csr_array) -> nn.Module:
         return MFModule(X.shape[0], X.shape[1], num_components=self.num_components)
 
     def _get_batch_scores(self, train_data, users, target_items, mnar_items):
@@ -313,22 +313,22 @@ class BPRMF(BPRBase):
             + self.lambda_w * self.model_.user_embedding_.weight.norm()
         )
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
 
         user_tensor = torch.LongTensor(users).to(self.device)
         item_tensor = torch.arange(X.shape[1]).to(self.device)
 
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         result[users] = self.model_(user_tensor, item_tensor).detach().cpu().numpy()
 
         return result.tocsr()
@@ -470,7 +470,7 @@ class BPRKNN(BPRBase):
         self.lambda_target = lambda_target
         self.lambda_mnar = lambda_mnar
 
-    def _create_model(self, X: csr_matrix) -> nn.Module:
+    def _create_model(self, X: csr_array) -> nn.Module:
         if self.similarity_mode == "direct":
             return BPRKNNModule(X.shape[1])
         return FactorizedBPRKNNModule(X.shape[1], self.num_components)
@@ -490,10 +490,10 @@ class BPRKNN(BPRBase):
             self.lambda_mnar,
         )
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         history = torch.FloatTensor(X[users].toarray()).to(self.device)
         item_tensor = torch.arange(X.shape[1]).to(self.device)
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         result[users] = self.model_.score_history(history, item_tensor).detach().cpu().numpy()
         return result.tocsr()
 
@@ -501,7 +501,7 @@ class BPRKNN(BPRBase):
         super().fit(X, validation_data)
         if self.similarity_mode == "direct":
             similarities = self.model_.similarity_matrix().detach().cpu().numpy()
-            similarity_matrix = csr_matrix(similarities)
+            similarity_matrix = csr_array(similarities)
             if self.K is not None and self.K < similarity_matrix.shape[1]:
                 similarity_matrix = get_top_K_values(similarity_matrix, K=self.K)
                 self.model_.set_similarity_matrix(similarity_matrix.toarray())

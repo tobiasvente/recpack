@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 
 from recpack.algorithms import BPRKNN, BPRMF
@@ -24,14 +24,14 @@ def X_in_for_pairwise():
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     )
 
-    pv = csr_matrix((pv_values, (pv_users, pv_items)), shape=(10, 5))
+    pv = csr_array((pv_values, (pv_users, pv_items)), shape=(10, 5))
 
     return pv
 
 
 @pytest.fixture(scope="function")
 def X_in_for_bprknn():
-    return csr_matrix(
+    return csr_array(
         [
             [1, 1, 0, 0],
             [1, 1, 0, 0],
@@ -194,7 +194,7 @@ def test_bprknn_pairwise_ranking(X_in_for_bprknn, seed):
     algorithm = BPRKNN(K=None, max_epochs=20, learning_rate=0.1, seed=seed)
 
     algorithm.fit(X_in_for_bprknn, (X_in_for_bprknn, X_in_for_bprknn))
-    prediction_input = csr_matrix(
+    prediction_input = csr_array(
         [
             [1, 0, 0, 0],
             [0, 0, 0, 0],
@@ -228,7 +228,7 @@ def test_bprknn_top_k_neighbours(X_in_for_bprknn):
         X_in_for_bprknn, (X_in_for_bprknn, X_in_for_bprknn)
     )
 
-    assert np.all(algorithm.similarity_matrix_.getnnz(axis=1) <= 1)
+    assert np.all(np.diff(algorithm.similarity_matrix_.indptr) <= 1)
 
 
 def test_bprknn_save_and_load(X_in_for_bprknn):
@@ -316,7 +316,7 @@ def test_factorized_ranking(X_in_for_bprknn):
     )
 
     algorithm.fit(X_in_for_bprknn, (X_in_for_bprknn, X_in_for_bprknn))
-    predictions = algorithm.predict(csr_matrix([[1, 0, 0, 0]] * 4))
+    predictions = algorithm.predict(csr_array([[1, 0, 0, 0]] * 4))
 
     assert predictions[0, 1] > predictions[0, 2]
     assert predictions[0, 1] > predictions[0, 3]
