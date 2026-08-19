@@ -363,7 +363,7 @@ def test_item_pnn_jaccard(data):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+    np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
 def test_item_pnn_dice(data):
@@ -374,7 +374,7 @@ def test_item_pnn_dice(data):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+    np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
 def test_item_pnn_overlap(data):
@@ -385,7 +385,7 @@ def test_item_pnn_overlap(data):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+    np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
 def test_item_pnn_lift(data):
@@ -396,7 +396,7 @@ def test_item_pnn_lift(data):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+    np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
 def test_item_pnn_pmi(data):
@@ -407,7 +407,10 @@ def test_item_pnn_pmi(data):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, 1)
+    # A sampled pair can have PMI == 0. Sparse arrays do not store that value,
+    # so a row can contain fewer than K explicitly stored similarities.
+    assert np.all(binary_sims.sum(axis=1) <= 1)
+    np.testing.assert_array_equal(binary_sims.diagonal(), 0)
 
 
 @pytest.mark.parametrize(
@@ -473,7 +476,7 @@ def test_conditional_probability():
 
 def test_compute_jaccard_similarity():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [2, 1, 0],
         [1, 2, 3],
         [0, 5, 1],
@@ -493,7 +496,7 @@ def test_compute_jaccard_similarity():
 
 def test_compute_dice_similarity():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [2, 1, 0],
         [1, 2, 3],
         [0, 5, 1],
@@ -513,7 +516,7 @@ def test_compute_dice_similarity():
 
 def test_compute_overlap_similarity():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [2, 1, 0],
         [1, 2, 3],
         [0, 5, 1],
@@ -533,7 +536,7 @@ def test_compute_overlap_similarity():
 
 def test_compute_lift_similarity():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [2, 1, 0],
         [1, 2, 3],
         [0, 5, 1],
@@ -553,7 +556,7 @@ def test_compute_lift_similarity():
 
 def test_compute_pmi_similarity():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [2, 1, 0],
         [1, 2, 3],
         [0, 5, 1],

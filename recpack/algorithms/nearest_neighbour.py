@@ -112,7 +112,7 @@ def compute_pearson_similarity(X: csr_array) -> csr_array:
     return compute_cosine_similarity(X)
 
 
-def compute_jaccard_similarity(X: csr_matrix) -> csr_matrix:
+def compute_jaccard_similarity(X: csr_array) -> csr_array:
     """Compute the Jaccard similarity between items.
 
     Jaccard similarity between item i and j is computed as:
@@ -123,9 +123,9 @@ def compute_jaccard_similarity(X: csr_matrix) -> csr_matrix:
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: item-item similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     # convert score matrix to binary interaction matrix
     X = to_binary(X)
@@ -133,12 +133,14 @@ def compute_jaccard_similarity(X: csr_matrix) -> csr_matrix:
     intersection = X.T @ X
     intersection = intersection.tocoo()
 
-    item_counts = X.sum(axis=0).A[0]
+    item_counts = X.sum(axis=0)
 
     unions = item_counts[intersection.row] + item_counts[intersection.col] - intersection.data
 
-    item_jaccard_similarities = csr_matrix((intersection.data / unions, (intersection.row, intersection.col)),
-                                           shape=intersection.shape)
+    item_jaccard_similarities = csr_array(
+        (intersection.data / unions, (intersection.row, intersection.col)),
+        shape=intersection.shape,
+    )
 
     # remove self similarity
     item_jaccard_similarities.setdiag(0)
@@ -149,7 +151,7 @@ def compute_jaccard_similarity(X: csr_matrix) -> csr_matrix:
     return item_jaccard_similarities
 
 
-def compute_dice_similarity(X: csr_matrix) -> csr_matrix:
+def compute_dice_similarity(X: csr_array) -> csr_array:
     """Compute the Sorensen-Dice similarity between items.
 
     Dice similarity between item i and j is computed as:
@@ -160,9 +162,9 @@ def compute_dice_similarity(X: csr_matrix) -> csr_matrix:
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: item-item similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     # convert score matrix to binary interaction matrix
     X = to_binary(X)
@@ -170,10 +172,10 @@ def compute_dice_similarity(X: csr_matrix) -> csr_matrix:
     intersection = X.T @ X
     intersection = intersection.tocoo()
 
-    item_counts = X.sum(axis=0).A[0]
+    item_counts = X.sum(axis=0)
     denominators = item_counts[intersection.row] + item_counts[intersection.col]
 
-    item_dice_similarities = csr_matrix(
+    item_dice_similarities = csr_array(
         (2 * intersection.data / denominators, (intersection.row, intersection.col)),
         shape=intersection.shape,
     )
@@ -187,7 +189,7 @@ def compute_dice_similarity(X: csr_matrix) -> csr_matrix:
     return item_dice_similarities
 
 
-def compute_overlap_similarity(X: csr_matrix) -> csr_matrix:
+def compute_overlap_similarity(X: csr_array) -> csr_array:
     """Compute the overlap coefficient between items.
 
     Overlap similarity between item i and j is computed as:
@@ -198,9 +200,9 @@ def compute_overlap_similarity(X: csr_matrix) -> csr_matrix:
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: item-item similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     # convert score matrix to binary interaction matrix
     X = to_binary(X)
@@ -208,13 +210,13 @@ def compute_overlap_similarity(X: csr_matrix) -> csr_matrix:
     intersection = X.T @ X
     intersection = intersection.tocoo()
 
-    item_counts = X.sum(axis=0).A[0]
+    item_counts = X.sum(axis=0)
     denominators = np.minimum(
         item_counts[intersection.row],
         item_counts[intersection.col],
     )
 
-    item_overlap_similarities = csr_matrix((intersection.data / denominators, (intersection.row, intersection.col)),
+    item_overlap_similarities = csr_array((intersection.data / denominators, (intersection.row, intersection.col)),
         shape=intersection.shape,
     )
 
@@ -227,7 +229,7 @@ def compute_overlap_similarity(X: csr_matrix) -> csr_matrix:
     return item_overlap_similarities
 
 
-def compute_lift_similarity(X: csr_matrix) -> csr_matrix:
+def compute_lift_similarity(X: csr_array) -> csr_array:
     """Compute lift between items.
 
     Lift between item i and j is computed as:
@@ -238,9 +240,9 @@ def compute_lift_similarity(X: csr_matrix) -> csr_matrix:
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: item-item similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     # convert score matrix to binary interaction matrix
     X = to_binary(X)
@@ -248,12 +250,12 @@ def compute_lift_similarity(X: csr_matrix) -> csr_matrix:
     intersection = X.T @ X
     intersection = intersection.tocoo()
 
-    item_counts = X.sum(axis=0).A[0]
+    item_counts = X.sum(axis=0)
     denominators = item_counts[intersection.row] * item_counts[intersection.col]
     n_users = X.shape[0]
 
     # formula can be simplified to sim(i,j) = \\frac{Freq(i \\land j)*n_users}{Freq(i)*Freq(j)}
-    item_lift_similarities = csr_matrix(
+    item_lift_similarities = csr_array(
         (intersection.data * n_users / denominators, (intersection.row, intersection.col)),
         shape=intersection.shape,
     )
@@ -267,7 +269,7 @@ def compute_lift_similarity(X: csr_matrix) -> csr_matrix:
     return item_lift_similarities
 
 
-def compute_pmi_similarity(X: csr_matrix) -> csr_matrix:
+def compute_pmi_similarity(X: csr_array) -> csr_array:
     """Compute pointwise mutual information (PMI) between items.
 
     PMI between item i and j is computed as:
@@ -279,9 +281,9 @@ def compute_pmi_similarity(X: csr_matrix) -> csr_matrix:
     Self similarity is removed.
 
     :param X: user x item matrix with scores per user, item pair.
-    :type X: csr_matrix
+    :type X: csr_array
     :return: item-item similarity matrix
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
     item_pmi_similarities = compute_lift_similarity(X)
     item_pmi_similarities.data = np.log(item_pmi_similarities.data)
