@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 
 from recpack.algorithms.base import Algorithm
+from recpack.metrics.base import TimeMetric
 from recpack.algorithms import (
     ItemKNN,
     MultVAE,
@@ -66,6 +67,21 @@ def test_check_fit_complete(X_in):
         assert len(w) >= 1
 
         assert "1 items" in str(w[-1].message)
+
+
+def test_fit_and_predict_store_time(X_in):
+    algorithm = ItemKNN(2)
+
+    assert algorithm.fit_time is None
+    assert algorithm.predict_time is None
+
+    algorithm.fit(X_in)
+    assert isinstance(algorithm.fit_time, TimeMetric)
+    assert algorithm.predict_time is None
+
+    prediction = algorithm.predict(X_in)
+    assert isinstance(algorithm.fit_time, TimeMetric)
+    assert isinstance(algorithm.predict_time, TimeMetric)
 
 
 @pytest.mark.parametrize(
