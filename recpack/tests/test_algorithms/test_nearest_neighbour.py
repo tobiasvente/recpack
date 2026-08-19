@@ -52,7 +52,7 @@ def data_user_knn():
     values = [1] * 7
     users = [0, 0, 1, 1, 2, 2, 2]
     items = [1, 2, 0, 2, 0, 1, 2]
-    d = csr_matrix((values, (users, items)), shape=(3, 4))
+    d = csr_array((values, (users, items)), shape=(3, 4))
 
     return d
 
@@ -61,7 +61,7 @@ def data_empty_row():
     values = [1] * 5
     users = [0, 0, 1, 1, 1]
     items = [1, 2, 0, 1, 2]
-    d = csr_matrix((values, (users, items)), shape=(3, 3))
+    d = csr_array((values, (users, items)), shape=(3, 3))
 
     return d
 
@@ -205,10 +205,10 @@ def test_item_knn_conditional_probability_w_pop_discount(data_item_knn, pop_disc
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_jaccard(data):
+def test_item_knn_jaccard(data_item_knn):
     algo = ItemKNN(K=2, similarity="jaccard")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # data matrix looks like
     # 0 1 1
     # 1 0 1
@@ -232,10 +232,10 @@ def test_item_knn_jaccard(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_dice(data):
+def test_item_knn_dice(data_item_knn):
     algo = ItemKNN(K=2, similarity="dice")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # data matrix looks like
     # 0 1 1
     # 1 0 1
@@ -259,10 +259,10 @@ def test_item_knn_dice(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_overlap(data):
+def test_item_knn_overlap(data_item_knn):
     algo = ItemKNN(K=2, similarity="overlap")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # data matrix looks like
     # 0 1 1
     # 1 0 1
@@ -286,10 +286,10 @@ def test_item_knn_overlap(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_lift(data):
+def test_item_knn_lift(data_item_knn):
     algo = ItemKNN(K=2, similarity="lift")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # data matrix looks like
     # 0 1 1
     # 1 0 1
@@ -314,10 +314,10 @@ def test_item_knn_lift(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_pmi(data):
+def test_item_knn_pmi(data_item_knn):
     algo = ItemKNN(K=2, similarity="pmi")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # PMI is computed as log(lift).
 
     # fmt: off
@@ -373,10 +373,10 @@ def test_item_pnn_uniform_larger(larger_matrix):
     assert np.any(np.not_equal(sims.toarray(), sims2.toarray()))
 
 
-def test_item_pnn_jaccard(data):
+def test_item_pnn_jaccard(data_item_knn):
     algo = ItemPNN(K=1, similarity="jaccard", pdf="empirical")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
@@ -384,10 +384,10 @@ def test_item_pnn_jaccard(data):
     np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
-def test_item_pnn_dice(data):
+def test_item_pnn_dice(data_item_knn):
     algo = ItemPNN(K=1, similarity="dice", pdf="empirical")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
@@ -395,10 +395,10 @@ def test_item_pnn_dice(data):
     np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
-def test_item_pnn_overlap(data):
+def test_item_pnn_overlap(data_item_knn):
     algo = ItemPNN(K=1, similarity="overlap", pdf="empirical")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
@@ -406,10 +406,10 @@ def test_item_pnn_overlap(data):
     np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
-def test_item_pnn_lift(data):
+def test_item_pnn_lift(data_item_knn):
     algo = ItemPNN(K=1, similarity="lift", pdf="empirical")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
@@ -417,10 +417,10 @@ def test_item_pnn_lift(data):
     np.testing.assert_array_equal(binary_sims.sum(axis=1), 1)
 
 
-def test_item_pnn_pmi(data):
+def test_item_pnn_pmi(data_item_knn):
     algo = ItemPNN(K=1, similarity="pmi", pdf="softmax_empirical")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
@@ -638,12 +638,12 @@ def test_user_knn(data_user_knn):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
     # Users with one distinct interaction reproduce the similarity matrix.
-    X = csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    X = csr_array(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
     result = algo.predict(X)
     np.testing.assert_almost_equal(result.toarray(), expected_similarities)
 
     # Contributions from multiple similar users are added.
-    X = csr_matrix(([1, 1], ([0, 1], [0, 0])), shape=(3, 1))
+    X = csr_array(([1, 1], ([0, 1], [0, 0])), shape=(3, 1))
     expected_out = [[0.5], [0.5], [4 / math.sqrt(6)]]
     result = algo.predict(X)
     np.testing.assert_almost_equal(result.toarray(), expected_out)

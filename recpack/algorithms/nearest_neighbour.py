@@ -682,7 +682,7 @@ class UserKNN(Algorithm):
             raise ValueError(f"similarity {similarity} not supported")
         self.similarity = similarity
 
-    def _fit(self, X: csr_matrix) -> None:
+    def _fit(self, X: csr_array) -> None:
         """Fit a similarity matrix from user to user.
 
         :param X: user x item matrix with scores per user, item pair.
@@ -696,17 +696,17 @@ class UserKNN(Algorithm):
 
         self.similarity_matrix_ = user_similarities
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Predict scores for nonzero users in X
 
         Scores are computed by matrix multiplication of the stored similarity matrix with X.
 
         :param X: user x item matrix with scores per user, item pair.
-        :type X: csr_matrix
-        :return: csr_matrix with scores
-        :rtype: csr_matrix
+        :type X: csr_array
+        :return: csr_array with scores
+        :rtype: csr_array
         """
-        scores =  self.similarity_matrix_ @ X
+        scores = self.similarity_matrix_ @ X
 
         return scores
 
