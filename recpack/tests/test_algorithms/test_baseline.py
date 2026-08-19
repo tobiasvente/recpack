@@ -8,7 +8,7 @@ import warnings
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms import Popularity, Random
 
@@ -48,12 +48,12 @@ def test_popularity():
     item_i = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4]
     user_i = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
     values = [1] * 10
-    train_data = csr_matrix((values, (user_i, item_i)))
+    train_data = csr_array((values, (user_i, item_i)))
     algo = Popularity(K=20)
 
     algo.fit(train_data)
 
-    _in = csr_matrix(([1, 1], ([0, 1], [1, 1])), shape=(5, 5))
+    _in = csr_array(([1, 1], ([0, 1], [1, 1])), shape=(5, 5))
     prediction = algo.predict(_in)
 
     # All users in _in get the same recommendations
@@ -68,7 +68,7 @@ def test_popularity_K_larger_than_num_items():
     item_i = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4]
     user_i = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
     values = [1] * 10
-    train_data = csr_matrix((values, (user_i, item_i)))
+    train_data = csr_array((values, (user_i, item_i)))
     algo = Popularity(K=20)
     with warnings.catch_warnings(record=True) as w:
         algo.fit(train_data)

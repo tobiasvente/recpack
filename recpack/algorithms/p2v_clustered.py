@@ -11,7 +11,7 @@ import warnings
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import KMeans
 
@@ -188,7 +188,7 @@ class Prod2VecClustered(Prod2Vec):
 
         # empty easily updated sparse matrix
         # Will be filled in per row
-        item_cosine_similarity_ = lil_matrix((num_items, num_items))
+        item_cosine_similarity_ = lil_array((num_items, num_items))
 
         # Cluster the items in the embedding space:
         cluster_assignments = self._cluster(embedding)
@@ -204,7 +204,7 @@ class Prod2VecClustered(Prod2Vec):
         # Compute similarities per cluster
         for cluster in np.arange(self.num_clusters):
             # Get clusters that occur after `cluster` often.
-            cluster_neighbours = cluster_to_cluster_neighbours[cluster, :].nonzero()[1]
+            cluster_neighbours = cluster_to_cluster_neighbours[[cluster], :].nonzero()[1]
 
             if not cluster_neighbours.any():
                 continue
@@ -217,7 +217,7 @@ class Prod2VecClustered(Prod2Vec):
 
             target = embedding[adjacent_cluster_items, :]
 
-            local_sims = lil_matrix((cluster_items.shape[0], num_items))
+            local_sims = lil_array((cluster_items.shape[0], num_items))
 
             local_sims[:, adjacent_cluster_items] = cosine_similarity(context, target)
 
@@ -229,7 +229,7 @@ class Prod2VecClustered(Prod2Vec):
         item_cosine_similarity_[inactive_items] = 0
         item_cosine_similarity_[:, inactive_items] = 0
 
-        self.similarity_matrix_ = csr_matrix(item_cosine_similarity_)
+        self.similarity_matrix_ = csr_array(item_cosine_similarity_)
 
     def _cluster(self, embedding: np.ndarray) -> np.ndarray:
         """Use Kmeans to assign a cluster label to each item.
@@ -241,7 +241,7 @@ class Prod2VecClustered(Prod2Vec):
         cluster_assignments = kmeans.fit_predict(embedding)
         return cluster_assignments
 
-    def _get_top_K_clusters(self, X: InteractionMatrix, item_to_cluster: np.ndarray) -> csr_matrix:
+    def _get_top_K_clusters(self, X: InteractionMatrix, item_to_cluster: np.ndarray) -> csr_array:
         """Compute the clusters that should be considered neighbours.
 
         Similarity between two clusters i, j is computed by the number of times
@@ -254,7 +254,7 @@ class Prod2VecClustered(Prod2Vec):
         :type item_to_cluster: np.array
         :return: Sparse matrix with top Kcl neighbours for each cluster.
             Shape = (|C| x |C|)
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         # do a singular window operation to get an item and the next interacted item.
         context_items, focus_items = self._create_pairs(X)
@@ -265,7 +265,7 @@ class Prod2VecClustered(Prod2Vec):
         # create a cluster to cluster matrix
         # cheap trick: csr matrix automatically adds up duplicate entries
         values = np.ones(len(from_clusters))
-        cluster_to_cluster_csr = csr_matrix(
+        cluster_to_cluster_csr = csr_array(
             (values, (from_clusters, to_clusters)),
             shape=(self.num_clusters, self.num_clusters),
         )

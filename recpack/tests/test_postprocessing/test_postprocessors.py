@@ -10,7 +10,7 @@ from recpack.matrix import InteractionMatrix
 from recpack.postprocessing.postprocessors import Postprocessor
 import recpack.postprocessing.filters as filters
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 AMOUNT_OF_USERS = 100
 AMOUNT_OF_ITEMS = 25
@@ -48,8 +48,8 @@ def test_add_filter(filter_items):
     "prediction_matrix1, prediction_matrix2, filter_items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(
                 range(AMOUNT_OF_ITEMS),
                 np.random.randint(1, AMOUNT_SELECTED),
@@ -74,8 +74,8 @@ def test_process_many(prediction_matrix1, prediction_matrix2, filter_items):
     "prediction_matrix1, prediction_matrix2, filter_items",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
-            csr_matrix(np.random.random_sample(size=(2 * AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(2 * AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(range(AMOUNT_OF_ITEMS), np.random.randint(1, AMOUNT_SELECTED), replace=False),
         ),
     ],
@@ -91,7 +91,7 @@ def test_process_many_diff_size(prediction_matrix1, prediction_matrix2, filter_i
     "prediction_matrix, filter_items1, filter_items2",
     [
         (
-            csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
+            csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS))),
             np.random.choice(
                 range(AMOUNT_OF_ITEMS),
                 np.random.randint(1, AMOUNT_SELECTED),

@@ -37,17 +37,17 @@ recommendations, setting the rest to 0.
     SelectItems
 
 
-Filters can be applied manually, simply pass the csr_matrix to be processed to the apply function.::
+Filters can be applied manually, simply pass the csr_array to be processed to the apply function.::
 
     import numpy as np
-    from scipy.sparse import csr_matrix
+    from scipy.sparse import csr_array
 
     from recpack.postprocessing.filters import ExcludeItems
 
     # Generate random recommendations
     AMOUNT_OF_USERS = 20
     AMOUNT_OF_ITEMS = 5
-    recommendations = csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
+    recommendations = csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
 
     # Remove all recommendations for items 1 and 3
     items_to_remove = [1, 3]
@@ -58,7 +58,7 @@ The preferred way to use filters though is through the :class:`recpack.postproce
 That way all postprocessing happens in a more controlled way, leaving less room for error.::
 
     import numpy as np
-    from scipy.sparse import csr_matrix
+    from scipy.sparse import csr_array
 
     from recpack.postprocessing.filters import ExcludeItems, RemovePreviousInteractions
     from recpack.postprocessing.postprocessors import Postprocessor
@@ -66,8 +66,8 @@ That way all postprocessing happens in a more controlled way, leaving less room 
     # Generate random recommendations
     AMOUNT_OF_USERS = 20
     AMOUNT_OF_ITEMS = 5
-    recommendations_1 = csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
-    recommendations_2 = csr_matrix(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
+    recommendations_1 = csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
+    recommendations_2 = csr_array(np.random.random_sample(size=(AMOUNT_OF_USERS, AMOUNT_OF_ITEMS)))
 
     # Construct processor which removes items 1 and 3.
     processor = Postprocessor()

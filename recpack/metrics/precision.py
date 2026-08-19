@@ -9,7 +9,7 @@ import logging
 
 import numpy as np
 import scipy.sparse
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.metrics.base import ListwiseMetricK
 
@@ -40,15 +40,15 @@ class PrecisionK(ListwiseMetricK):
     def __init__(self, K):
         super().__init__(K)
 
-    def _calculate(self, y_true: csr_matrix, y_pred_top_K: csr_matrix) -> None:
-        scores = scipy.sparse.lil_matrix(y_pred_top_K.shape)
+    def _calculate(self, y_true: csr_array, y_pred_top_K: csr_array) -> None:
+        scores = scipy.sparse.lil_array(y_pred_top_K.shape)
 
         # Elementwise multiplication of top K predicts and true interactions
         scores[y_pred_top_K.multiply(y_true).astype(bool)] = 1
 
         scores = scores.tocsr()
 
-        self.scores_ = csr_matrix(scores.sum(axis=1)) / self.K
+        self.scores_ = csr_array(scores.sum(axis=1)[:, None]) / self.K
 
         return
 

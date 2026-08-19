@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 import tempfile
@@ -23,7 +23,7 @@ from recpack.algorithms.stopping_criterion import (
     StoppingCriterion,
 )
 from recpack.algorithms.util import get_batches, get_users, sample_rows
-from recpack.matrix import InteractionMatrix, to_csr_matrix, Matrix
+from recpack.matrix import InteractionMatrix, to_csr_array, Matrix
 from recpack.util import get_top_K_values
 
 
@@ -71,29 +71,29 @@ class Algorithm(BaseEstimator):
         """
         super().set_params(**params)
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
         """Stub implementation for fitting an algorithm.
 
         Will be called by the :meth:`fit` wrapper.
         Child classes should implement this function.
 
         :param X: User-item interaction matrix to fit the model to
-        :type X: csr_matrix
+        :type X: csr_array
         :raises NotImplementedError: Implement this method in the child class
         """
         raise NotImplementedError("Please implement _fit")
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Stub for predicting scores to users
 
         Will be called by the :meth:`predict` wrapper.
         Child classes should implement this function.
 
         :param X: User-item interaction matrix used as input to predict
-        :type X: csr_matrix
+        :type X: csr_array
         :raises NotImplementedError: Implement this method in the child class
         :return: Predictions made for all nonzero users in X
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         raise NotImplementedError("Please implement _predict")
 
@@ -105,7 +105,7 @@ class Algorithm(BaseEstimator):
         """
         check_is_fitted(self)
 
-    def _check_prediction(self, X_pred: csr_matrix, X: csr_matrix) -> None:
+    def _check_prediction(self, X_pred: csr_array, X: csr_array) -> None:
         """Checks that the predictions matches expectations
 
         Checks implemented:
@@ -115,9 +115,9 @@ class Algorithm(BaseEstimator):
         For failing checks a warning is printed.
 
         :param X_pred: Predictions made for all nonzero users in X
-        :type X_pred: csr_matrix
+        :type X_pred: csr_array
         :param X: User-item interaction matrix used as input to predict
-        :type X: csr_matrix
+        :type X: csr_array
         """
 
         users = set(X.nonzero()[0])
@@ -126,7 +126,7 @@ class Algorithm(BaseEstimator):
         if len(missing) > 0:
             warnings.warn(f"{self.name} failed to recommend any items " f"for {len(missing)} users")
 
-    def _transform_fit_input(self, X: Matrix) -> csr_matrix:
+    def _transform_fit_input(self, X: Matrix) -> csr_array:
         """Transform the training data to expected type
 
         Data will be turned into a binary csr matrix.
@@ -134,11 +134,11 @@ class Algorithm(BaseEstimator):
         :param X: User-item interaction matrix to fit the model to
         :type X: Matrix
         :return: Transformed user-item interaction matrix to fit the model
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
-        return to_csr_matrix(X, binary=True)
+        return to_csr_array(X, binary=True)
 
-    def _transform_predict_input(self, X: Matrix) -> csr_matrix:
+    def _transform_predict_input(self, X: Matrix) -> csr_array:
         """Transform the input of predict to expected type
 
         Data will be turned into a binary csr matrix.
@@ -146,9 +146,9 @@ class Algorithm(BaseEstimator):
         :param X: User-item interaction matrix used as input to predict
         :type X: Matrix
         :return: Transformed user-item interaction matrix used as input to predict
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
-        return to_csr_matrix(X, binary=True)
+        return to_csr_array(X, binary=True)
 
     def _assert_is_interaction_matrix(self, *matrices: Matrix) -> None:
         """Make sure that the passed matrices are all an InteractionMatrix."""
@@ -190,7 +190,7 @@ class Algorithm(BaseEstimator):
         logger.info(f"Fitting {self.name} complete - Took {end - start :.3}s")
         return self
 
-    def predict(self, X: Matrix) -> csr_matrix:
+    def predict(self, X: Matrix) -> csr_array:
         """Predicts scores, given the interactions in X
 
         Recommends items for each nonzero user in the X matrix.
@@ -204,7 +204,7 @@ class Algorithm(BaseEstimator):
         :param X: interactions to predict from.
         :type X: Matrix
         :return: The recommendation scores in a sparse matrix format.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         self._check_fit_complete()
 
@@ -234,23 +234,23 @@ class ItemSimilarityMatrixAlgorithm(Algorithm):
     to construct the `self.similarity_matrix_` attribute.
     """
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Predict scores for nonzero users in X
 
         Scores are computed by matrix multiplication of X
         with the stored similarity matrix.
 
-        :param X: csr_matrix with interactions
-        :type X: csr_matrix
-        :return: csr_matrix with scores
-        :rtype: csr_matrix
+        :param X: csr_array with interactions
+        :type X: csr_array
+        :return: csr_array with scores
+        :rtype: csr_array
         """
         scores = X @ self.similarity_matrix_
 
         # If self.similarity_matrix_ is not a csr matrix,
         # scores will also not be a csr matrix
-        if not isinstance(scores, csr_matrix):
-            scores = csr_matrix(scores)
+        if not isinstance(scores, csr_array):
+            scores = csr_array(scores)
 
         return scores
 
@@ -344,7 +344,7 @@ class FactorizationAlgorithm(Algorithm):
         assert self.user_embedding_.shape[1] == self.num_components
         assert self.item_embedding_.shape[0] == self.num_components
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """Predict scores for nonzero users in the interaction matrix
 
         For each nonzero users their embedding is multiplied with the item embeddings,
@@ -354,15 +354,15 @@ class FactorizationAlgorithm(Algorithm):
         items and users in the embeddings.
 
         :param X: binary interaction matrix.
-        :type X: csr_matrix
+        :type X: csr_array
         :return: matrix with scores for each nonzero user.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         assert X.shape == (self.user_embedding_.shape[0], self.item_embedding_.shape[1])
         # Get the nonzero users, for these we will recommend.
         users = list(set(X.nonzero()[0]))
         # result is a lil matrix, makes editing rows easy
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         # Set rows of the nonzero users to the predicted scores
         result[users] = self.user_embedding_[users] @ self.item_embedding_
 
@@ -517,19 +517,19 @@ class TorchMLAlgorithm(Algorithm):
         If the new model is better it is stored using :meth:`_save_best`
 
         :param val_in: Validation Data input
-        :type val_in: csr_matrix
+        :type val_in: csr_array
         :param val_out: Expected output from validation data
-        :type val_out: csr_matrix
+        :type val_out: csr_array
         """
         # Evaluate batched
         val_in = self._transform_predict_input(val_in)
-        val_out = to_csr_matrix(val_out)
+        val_out = to_csr_array(val_out)
 
         if self.validation_sample_size:
             val_in, val_out = sample_rows(val_in, val_out, sample_size=self.validation_sample_size)
 
         X_pred_cpu = self._predict(val_in)
-        # StoppingCriterion expects csr_matrix as output
+        # StoppingCriterion expects csr_array as output
 
         better = self.stopping_criterion.update(val_out, X_pred_cpu)
 
@@ -542,20 +542,20 @@ class TorchMLAlgorithm(Algorithm):
 
         A training epoch updates the internal model using the provided interactions.
         :param X: user item interaction matrix.
-        :type X: csr_matrix
+        :type X: csr_array
         """
         raise NotImplementedError()
 
-    def _batch_predict(self, X: Matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: Matrix, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         raise NotImplementedError("Please implement this function")
 
@@ -563,35 +563,35 @@ class TorchMLAlgorithm(Algorithm):
         """Keep only the top K recommendations as configured by the predict_topK hyperparameter
 
         :param X_pred: Recommendation scores as a sparse matrix.
-        :type X_pred: csr_matrix
+        :type X_pred: csr_array
         :return: The selected recommendation scores as a sparse matrix
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         if self.predict_topK:
             return get_top_K_values(X_pred, self.predict_topK)
         else:
             return X_pred
 
-    def _predict(self, X: Matrix) -> csr_matrix:
+    def _predict(self, X: Matrix) -> csr_array:
         """Compute predictions per batch of users,
         to avoid going out of RAM on the GPU
 
         Will batch the nonzero users into batches of self.batch_size.
 
         :param X: The input user interaction matrix
-        :type X: csr_matrix
+        :type X: csr_array
         :return: The predicted affinity of users for items.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
 
-        results = lil_matrix(X.shape)
+        results = lil_array(X.shape)
         self.model_.eval()
         with torch.no_grad():
             for users in get_batches(get_users(X), batch_size=self.batch_size):
                 if isinstance(X, InteractionMatrix):
                     batch = X.users_in(users)
                 else:
-                    batch = lil_matrix(X.shape)
+                    batch = lil_array(X.shape)
                     batch[users] = X[users]
                     batch = batch.tocsr()
 
@@ -603,7 +603,7 @@ class TorchMLAlgorithm(Algorithm):
 
     def _transform_fit_input(
         self, X: Matrix, validation_data: Tuple[Matrix, Matrix]
-    ) -> Tuple[csr_matrix, Tuple[csr_matrix, csr_matrix]]:
+    ) -> Tuple[csr_array, Tuple[csr_array, csr_array]]:
         """Transform the input matrices of the training function to the expected types
 
         All matrices get converted to binary csr matrices
@@ -613,12 +613,12 @@ class TorchMLAlgorithm(Algorithm):
         :param validation_data: The tuple with validation_in and validation_out data
         :type validation_data: Tuple[Matrix, Matrix]
         :return: The transformed matrices
-        :rtype: Tuple[csr_matrix, Tuple[csr_matrix, csr_matrix]]
+        :rtype: Tuple[csr_array, Tuple[csr_array, csr_array]]
         """
-        return to_csr_matrix((X, validation_data), binary=True)
+        return to_csr_array((X, validation_data), binary=True)
 
-    def _transform_predict_input(self, X: Matrix) -> csr_matrix:
-        return to_csr_matrix(X, binary=True)
+    def _transform_predict_input(self, X: Matrix) -> csr_array:
+        return to_csr_array(X, binary=True)
 
     @property
     def filename(self):
@@ -728,16 +728,16 @@ class TorchMLAlgorithm(Algorithm):
 
         return self
 
-    def _check_prediction(self, X_pred: csr_matrix, X: Matrix) -> None:
+    def _check_prediction(self, X_pred: csr_array, X: Matrix) -> None:
         """Checks that the prediction matches expectations.
 
         Checks implemented
         - Check that all users with history got at least 1 recommendation
 
         :param X_pred: The matrix with predictions
-        :type X_pred: csr_matrix
+        :type X_pred: csr_array
         :param X: The input matrix for prediction, used as 'history'
-        :type X: csr_matrix
+        :type X: csr_array
         """
 
         users = set(X.nonzero()[0])

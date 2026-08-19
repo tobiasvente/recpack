@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 from typing import Optional
-from scipy.sparse import csr_matrix, diags
+from scipy.sparse import csr_array, diags_array
 import sklearn.decomposition
 
 from recpack.algorithms.base import (
@@ -46,7 +46,7 @@ class NMF(FactorizationAlgorithm):
         self.alpha = alpha
         self.l1_ratio = l1_ratio
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
 
         # Using Sklearn NMF implementation. For info and parameters:
         # https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.NMF.html
@@ -91,7 +91,7 @@ class SVD(FactorizationAlgorithm):
 
         self.seed = seed
 
-    def _fit(self, X: csr_matrix):
+    def _fit(self, X: csr_array):
 
         model = sklearn.decomposition.TruncatedSVD(n_components=self.num_components, n_iter=7, random_state=self.seed)
         # Factorization computes U x Sigma x V
@@ -100,7 +100,7 @@ class SVD(FactorizationAlgorithm):
         self.user_embedding_ = model.fit_transform(X)
 
         V = model.components_
-        sigma = diags(model.singular_values_)
+        sigma = diags_array(model.singular_values_)
         self.item_embedding_ = sigma @ V
 
         # Post conditions

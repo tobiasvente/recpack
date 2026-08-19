@@ -34,8 +34,8 @@ def test_check_prediction():
     a = np.ones(5)
     b = a.copy()
     b[2] = 0
-    X_pred = scipy.sparse.diags(b).tocsr()
-    X = scipy.sparse.diags(a).tocsr()
+    X_pred = scipy.sparse.diags_array(b).tocsr()
+    X = scipy.sparse.diags_array(a).tocsr()
 
     a = Algorithm()
     
@@ -126,7 +126,7 @@ def test_assert_is_interaction_matrix(algo_class, matrix_sessions):
     with pytest.raises(TypeError) as type_error:
         algo._assert_is_interaction_matrix(matrix_sessions.binary_values)
 
-    assert type_error.match(".* requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_matrix'>.")
+    assert type_error.match(".* requires Interaction Matrix as input. Got <class 'scipy.sparse._csr.csr_array'>.")
 
 
 @pytest.mark.parametrize(

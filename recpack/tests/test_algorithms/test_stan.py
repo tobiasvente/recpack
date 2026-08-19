@@ -8,7 +8,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms.stan import STAN
 from recpack.matrix import InteractionMatrix
@@ -61,7 +61,7 @@ def test_fit(algo, mini_training_dataset):
     )
 
     expected_session_timestamps = [[3, 2, 0, 0]]
-    np.testing.assert_array_equal(algo.historical_session_timestamps_.A.T, expected_session_timestamps)
+    np.testing.assert_array_equal(algo.historical_session_timestamps_.toarray().T, expected_session_timestamps)
 
 
 def test_compute_session_similarity(algo, mini_training_dataset, mini_test_dataset):
@@ -103,7 +103,7 @@ def test_compute_prediction_scores(algo, mini_training_dataset, mini_test_datase
     algo.fit(mini_training_dataset)
 
     # fmt: off
-    session_similarities = csr_matrix(
+    session_similarities = csr_array(
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -130,7 +130,7 @@ def test_compute_prediction_scores_single_neighbour(algo, mini_training_dataset,
     algo.fit(mini_training_dataset)
 
     # fmt: off
-    session_similarities = csr_matrix(
+    session_similarities = csr_array(
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],

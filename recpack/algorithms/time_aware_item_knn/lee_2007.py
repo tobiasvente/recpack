@@ -6,7 +6,7 @@
 #   Robin Verachtert
 
 import numpy as np
-from scipy.sparse import csr_matrix, dok_matrix
+from scipy.sparse import csr_array, dok_array
 
 from recpack.algorithms.time_aware_item_knn.base import TARSItemKNN
 from recpack.matrix import InteractionMatrix
@@ -68,7 +68,7 @@ class TARSItemKNNLee(TARSItemKNN):
         self.w = w
         self.W = self.W_MAP[w]
 
-    def _add_decay_to_fit_matrix(self, X: InteractionMatrix) -> csr_matrix:
+    def _add_decay_to_fit_matrix(self, X: InteractionMatrix) -> csr_array:
         """Add decay to each user, item interaction based on the launch time of the item,
         and the last time the user interacted with the item.
 
@@ -77,7 +77,7 @@ class TARSItemKNNLee(TARSItemKNN):
         :param X: InteractionMatrix with events to use to generate a weighted matrix.
         :type X: InteractionMatrix
         :return: Weighted user x item matrix. At position u, i the weight of user u interacting with item i is stored.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         launch_times = self._compute_launch_times(X)
         launch_width = launch_times.max() - launch_times.min()
@@ -98,7 +98,7 @@ class TARSItemKNNLee(TARSItemKNN):
             """Get the index of the first value in the array that is greater than or equal to value"""
             return next(ix for ix, val in enumerate(arr) if val >= value)
 
-        X = dok_matrix(X.shape)
+        X = dok_array(X.shape)
         for user, item in zip(*timestamps_mat.nonzero()):
             ts = timestamps_mat[user, item]
             lt = launch_times[item]

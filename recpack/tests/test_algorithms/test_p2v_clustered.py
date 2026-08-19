@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 
 from recpack.algorithms.p2v_clustered import Prod2VecClustered
@@ -50,7 +50,7 @@ def prod2vec(p2v_embedding, mat):
 
 def test__predict(prod2vec, larger_mat):
     prod2vec._init_model(larger_mat)
-    matrix = csr_matrix((6, 25))
+    matrix = csr_array((6, 25))
     matrix[[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]] = 1
 
     prod2vec._create_similarity_matrix(larger_mat)
@@ -135,20 +135,20 @@ def test_cluster_similarity_computation():
 
     assert c2c.shape == (4, 4)
 
-    np.testing.assert_array_equal(c2c[c_0].nonzero()[1], np.array(sorted([c_0, c_1])))
-    np.testing.assert_array_equal(c2c[c_1].nonzero()[1], np.array(sorted([c_1, c_2])))
-    np.testing.assert_array_equal(c2c[c_2].nonzero()[1], np.array(sorted([c_2, c_3])))
-    np.testing.assert_array_equal(c2c[c_3].nonzero()[1], np.array(sorted([c_3, c_0])))
+    np.testing.assert_array_equal(c2c[c_0].nonzero()[0], np.array(sorted([c_0, c_1])))
+    np.testing.assert_array_equal(c2c[c_1].nonzero()[0], np.array(sorted([c_1, c_2])))
+    np.testing.assert_array_equal(c2c[c_2].nonzero()[0], np.array(sorted([c_2, c_3])))
+    np.testing.assert_array_equal(c2c[c_3].nonzero()[0], np.array(sorted([c_3, c_0])))
 
     # Check if only items from neighbouring clusters are nonzero
 
     alg._create_similarity_matrix(im)
 
     # All items in neighbouring clusters except itself.
-    np.testing.assert_array_equal([1, 2, 3], alg.similarity_matrix_[0, :].nonzero()[1])
-    np.testing.assert_array_equal([3, 4, 5], alg.similarity_matrix_[2, :].nonzero()[1])
-    np.testing.assert_array_equal([5, 6, 7], alg.similarity_matrix_[4, :].nonzero()[1])
-    np.testing.assert_array_equal([0, 1, 7], alg.similarity_matrix_[6, :].nonzero()[1])
+    np.testing.assert_array_equal([1, 2, 3], alg.similarity_matrix_[0, :].nonzero()[0])
+    np.testing.assert_array_equal([3, 4, 5], alg.similarity_matrix_[2, :].nonzero()[0])
+    np.testing.assert_array_equal([5, 6, 7], alg.similarity_matrix_[4, :].nonzero()[0])
+    np.testing.assert_array_equal([0, 1, 7], alg.similarity_matrix_[6, :].nonzero()[0])
 
 
 def test_training_epoch(prod2vec, mat):
@@ -199,7 +199,7 @@ def test_no_self_similarity(prod2vec, mat):
     ],
 )
 def test_no_similarity_from_inactive_items(prod2vec, mat, active_items, inactive_items):
-    matrix = csr_matrix((mat.shape[1], mat.shape[1]))
+    matrix = csr_array((mat.shape[1], mat.shape[1]))
     matrix[active_items, active_items] = 1
 
     prod2vec._create_similarity_matrix(mat.items_in(active_items))
@@ -216,7 +216,7 @@ def test_no_similarity_from_inactive_items(prod2vec, mat, active_items, inactive
     ],
 )
 def test_no_similarity_to_inactive_items(prod2vec, mat, active_items, inactive_items):
-    matrix = csr_matrix((mat.shape[1], mat.shape[1]))
+    matrix = csr_array((mat.shape[1], mat.shape[1]))
     matrix[active_items, active_items] = 1
 
     prod2vec._create_similarity_matrix(mat.items_in(active_items))

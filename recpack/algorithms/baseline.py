@@ -8,7 +8,7 @@ from typing import Optional
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 
 from recpack.algorithms.base import Algorithm
 from recpack.util import get_top_K_values
@@ -44,7 +44,7 @@ class Random(Algorithm):
         self.seed = seed
         self.rand_gen = np.random.default_rng(seed=self.seed)
 
-    def _fit(self, X: csr_matrix) -> "Random":
+    def _fit(self, X: csr_array) -> "Random":
         if self.use_only_interacted_items:
             self.items_ = list(set(X.nonzero()[1]))
         else:
@@ -55,7 +55,7 @@ class Random(Algorithm):
 
         return self
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         # For each user choose random K items, and generate a score for these items
         # Then create a matrix with the scores on the right indices
         users = list(set(X.nonzero()[0]))
@@ -69,9 +69,9 @@ class Random(Algorithm):
         allowed_items = np.zeros(num_items)
         allowed_items[self.items_] = 1
         # Get top K of allowed items per user
-        top_scores = get_top_K_values(csr_matrix(random_scores * allowed_items), K=K)
+        top_scores = get_top_K_values(csr_array(random_scores * allowed_items), K=K)
 
-        X_pred = csr_matrix(X.shape)
+        X_pred = csr_array(X.shape)
         X_pred[users] = top_scores
 
         return X_pred
@@ -92,9 +92,9 @@ class Popularity(Algorithm):
         super().__init__()
         self.K = K
 
-    def _fit(self, X: csr_matrix) -> "Popularity":
+    def _fit(self, X: csr_array) -> "Popularity":
         # Get popularity score for every item
-        interaction_counts = X.sum(axis=0).A[0]
+        interaction_counts = X.sum(axis=0)
         sorted_scores = interaction_counts / interaction_counts.max()
 
         num_items = X.shape[1]
@@ -108,12 +108,12 @@ class Popularity(Algorithm):
         self.sorted_scores_ = a
         return self
 
-    def _predict(self, X: csr_matrix) -> csr_matrix:
+    def _predict(self, X: csr_array) -> csr_array:
         """For each user predict the K most popular items"""
 
         users = list(set(X.nonzero()[0]))
 
-        X_pred = lil_matrix(X.shape)
+        X_pred = lil_array(X.shape)
         X_pred[users] = self.sorted_scores_
 
         return X_pred.tocsr()

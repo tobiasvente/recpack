@@ -18,7 +18,7 @@ def test_nmf_item_to_item(X_in):
     n_items = X_in.shape[1]
     assert a.similarity_matrix_.shape == (n_items, n_items)
 
-    prediction = a.predict(X_in[2])
+    prediction = a.predict(X_in[[2], :])
     assert prediction.shape == (1, n_items)
     assert prediction.nonzero() != []
 
@@ -33,6 +33,6 @@ def test_svd_item_to_item(X_in):
     assert a.similarity_matrix_.shape == (n_items, n_items)
     np.testing.assert_array_equal(a.similarity_matrix_.diagonal(), 0)
 
-    prediction = a.predict(X_in[2])
+    prediction = a.predict(X_in[[2], :])
     assert prediction.shape == (1, n_items)
     assert prediction.nonzero() != []

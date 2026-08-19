@@ -7,7 +7,7 @@
 
 from typing import Any, Tuple, Union
 
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array, sparray
 
 from recpack.matrix.interaction_matrix import InteractionMatrix
 from recpack.util import to_binary
@@ -15,32 +15,32 @@ from recpack.util import to_binary
 # Conversion and validation of the various matrix data types supported by recpack.
 
 # In this module the Matrix type is defined, as the union of the InteractionMatrix object,
-# and csr_matrix, the typically used sparse represenation.
+# and csr_array, the typically used sparse represenation.
 
 # This allows you to use the classes that support Matrix as parameter type
 # to be used without the use of the InteractionMatrix object.
-Matrix = Union[InteractionMatrix, csr_matrix]
+Matrix = Union[InteractionMatrix, sparray]
 
 _supported_types = Matrix.__args__  # type: ignore
 
 
-def to_csr_matrix(
+def to_csr_array(
     X: Union[Matrix, Tuple[Matrix, ...]], binary: bool = False
-) -> Union[csr_matrix, Tuple[csr_matrix, ...]]:
-    """Convert a matrix-like object to a scipy csr_matrix.
+) -> Union[csr_array, Tuple[csr_array, ...]]:
+    """Convert a matrix-like object to a scipy csr_array.
 
     :param X: Matrix-like object or tuple of objects to convert.
-    :type X: csr_matrix
+    :type X: csr_array
     :param binary: If true, ensure matrix is binary by setting non-zero values to 1.
     :type binary: bool, optional
     :raises: UnsupportedTypeError
-    :return: Matrices as csr_matrix.
-    :rtype: Union[csr_matrix, Tuple[csr_matrix, ...]]
+    :return: Matrices as csr_array.
+    :rtype: Union[csr_array, Tuple[csr_array, ...]]
     """
     if isinstance(X, (tuple, list)):
-        return type(X)(to_csr_matrix(x, binary=binary) for x in X)
-    if isinstance(X, csr_matrix):
-        res = X
+        return type(X)(to_csr_array(x, binary=binary) for x in X)
+    if isinstance(X, sparray):
+        res = X.tocsr()
     elif isinstance(X, InteractionMatrix):
         res = X.values
     else:

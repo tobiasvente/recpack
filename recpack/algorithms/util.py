@@ -10,7 +10,7 @@ from itertools import islice
 from typing import Iterator, List, Iterable, Union
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 
 from recpack.matrix import InteractionMatrix, Matrix, to_binary
@@ -24,26 +24,26 @@ def log_norm_pdf(x, mu, logvar):
     return -0.5 * (logvar + np.log(2 * np.pi) + (x - mu).pow(2) / logvar.exp())
 
 
-def naive_sparse2tensor(data: csr_matrix) -> torch.Tensor:
-    """Naively converts sparse csr_matrix to torch Tensor.
+def naive_sparse2tensor(data: csr_array) -> torch.Tensor:
+    """Naively converts sparse csr_array to torch Tensor.
 
     :param data: CSR matrix to convert
-    :type data: csr_matrix
+    :type data: csr_array
     :return: Torch Tensor representation of the matrix.
     :rtype: torch.Tensor
     """
     return torch.FloatTensor(data.toarray())
 
 
-def naive_tensor2sparse(tensor: torch.Tensor) -> csr_matrix:
-    """Converts torch Tensor to sparse csr_matrix.
+def naive_tensor2sparse(tensor: torch.Tensor) -> csr_array:
+    """Converts torch Tensor to sparse csr_array.
 
     :param tensor: Torch Tensor representation of the matrix to convert.
     :type tensor: torch.Tensor
     :return: CSR matrix representation of the matrix.
-    :rtype: csr_matrix
+    :rtype: csr_array
     """
-    return csr_matrix(tensor.detach().numpy())
+    return csr_array(tensor.detach().numpy())
 
 
 def get_users(data: Matrix) -> List[int]:
@@ -77,7 +77,7 @@ def get_batches(iterable: Iterable, batch_size=1000) -> Iterator[List]:
 def sample_rows(*args: Matrix, sample_size: int = 1000) -> List[Matrix]:
     """Samples rows from the matrices
 
-    Rows are sampled from the nonzero rows in the first csr_matrix argument.
+    Rows are sampled from the nonzero rows in the first csr_array argument.
     The return value will contain a matrix for each of the matrix arguments, with only the sampled rows nonzero.
 
     :param sample_size: Number of rows to sample, defaults to 1000
@@ -93,7 +93,7 @@ def sample_rows(*args: Matrix, sample_size: int = 1000) -> List[Matrix]:
         if type(mat) == InteractionMatrix:
             sampled_mat = mat.users_in(users)
         else:
-            sampled_mat = csr_matrix(mat.shape)
+            sampled_mat = csr_array(mat.shape)
             sampled_mat[users, :] = mat[users, :]
 
         sampled_matrices.append(sampled_mat)
@@ -101,21 +101,21 @@ def sample_rows(*args: Matrix, sample_size: int = 1000) -> List[Matrix]:
     return sampled_matrices
 
 
-def union_csr_matrices(a: csr_matrix, b: csr_matrix) -> csr_matrix:
+def union_csr_matrices(a: csr_array, b: csr_array) -> csr_array:
     """Combine entries of 2 binary csr_matrices.
 
 
-    :param a: Binary csr_matrix
-    :type a: csr_matrix
-    :param b: Binary csr_matrix
-    :type b: csr_matrix
+    :param a: Binary csr_array
+    :type a: csr_array
+    :param b: Binary csr_array
+    :type b: csr_array
     :return: The union of a and b
-    :rtype csr_matrix:
+    :rtype csr_array:
     """
     return to_binary(a + b)
 
 
-def invert(x: Union[np.ndarray, csr_matrix]) -> Union[np.ndarray, csr_matrix]:
+def invert(x: Union[np.ndarray, csr_array]) -> Union[np.ndarray, csr_array]:
     """Invert an array.
 
     :param x: [description]
@@ -125,8 +125,8 @@ def invert(x: Union[np.ndarray, csr_matrix]) -> Union[np.ndarray, csr_matrix]:
     """
     if isinstance(x, np.ndarray):
         ret = np.zeros(x.shape)
-    elif isinstance(x, csr_matrix):
-        ret = csr_matrix(x.shape)
+    elif isinstance(x, csr_array):
+        ret = csr_array(x.shape)
     else:
         raise TypeError("Unsupported type for argument x.")
     ret[x.nonzero()] = 1 / x[x.nonzero()]

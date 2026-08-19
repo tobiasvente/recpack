@@ -5,7 +5,7 @@
 #   Lien Michiels
 #   Robin Verachtert
 
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.metrics.base import GlobalMetricK
 
@@ -27,7 +27,7 @@ class CoverageK(GlobalMetricK):
     def __init__(self, K):
         super().__init__(K)
 
-    def _calculate(self, y_true: csr_matrix, y_pred_top_K: csr_matrix) -> None:
+    def _calculate(self, y_true: csr_array, y_pred_top_K: csr_array) -> None:
 
         self.covered_items_ = set(y_pred_top_K.nonzero()[1])
 

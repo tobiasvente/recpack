@@ -137,6 +137,6 @@ def test_predict(larger_matrix, algo):
 
     X_pred = algo.predict(larger_matrix)
 
-    assert isinstance(X_pred, scipy.sparse.csr_matrix)
+    assert isinstance(X_pred, scipy.sparse.csr_array)
 
     assert not set(X_pred.nonzero()[0]).difference(larger_matrix.nonzero()[0])

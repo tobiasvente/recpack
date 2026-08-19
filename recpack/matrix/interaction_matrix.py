@@ -14,7 +14,7 @@ import yaml
 
 import pandas as pd
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.util import to_binary
 
@@ -200,20 +200,20 @@ class InteractionMatrix:
         )
 
     @property
-    def values(self) -> csr_matrix:
+    def values(self) -> csr_array:
         """All user-item interactions as a sparse matrix of size ``(|users|, |items|)``.
 
         Each entry is the number of interactions between that user and item.
         If there are no interactions between a user and item, the entry is 0.
 
-        :return: Interactions between users and items as a csr_matrix.
-        :rtype: csr_matrix
+        :return: Interactions between users and items as a csr_array.
+        :rtype: csr_array
         """
         values = np.ones(self._df.shape[0])
         indices = self._df[[InteractionMatrix.USER_IX, InteractionMatrix.ITEM_IX]].values
         indices = indices[:, 0], indices[:, 1]
 
-        matrix = csr_matrix((values, indices), shape=self.shape, dtype=np.int32)
+        matrix = csr_array((values, indices), shape=self.shape, dtype=np.int32)
         return matrix
 
     @property
@@ -260,13 +260,13 @@ class InteractionMatrix:
         return self._df[[InteractionMatrix.TIMESTAMP_IX]].set_index(index)[InteractionMatrix.TIMESTAMP_IX]
 
     @property
-    def last_timestamps_matrix(self) -> csr_matrix:
+    def last_timestamps_matrix(self) -> csr_array:
         """A sparse matrix with the last timestamp for each user, item pair.
 
         By using the maximal timestamp for each pair, we make it possible to use non deduplicated datasets.
         """
         timestamps = self.timestamps.groupby(["uid", "iid"]).max().reset_index()
-        timestamp_mat = csr_matrix(
+        timestamp_mat = csr_array(
             (timestamps.ts.values, (timestamps.uid.values, timestamps.iid.values)),
             shape=self.shape,
         )
@@ -586,25 +586,25 @@ class InteractionMatrix:
         return density
 
     @property
-    def binary_values(self) -> csr_matrix:
+    def binary_values(self) -> csr_array:
         """All user-item interactions as a sparse, binary matrix of size (users, items).
 
         An entry is 1 if there is at least one interaction between that user and item.
         In all other cases the entry is 0.
 
-        :return: Binary csr_matrix of interactions.
-        :rtype: csr_matrix
+        :return: Binary csr_array of interactions.
+        :rtype: csr_array
         """
         return to_binary(self.values)
 
     @classmethod
-    def from_csr_matrix(cls, X: csr_matrix) -> "InteractionMatrix":
-        """Create an InteractionMatrix from a csr_matrix containing interactions.
+    def from_csr_array(cls, X: csr_array) -> "InteractionMatrix":
+        """Create an InteractionMatrix from a csr_array containing interactions.
 
         .. warning::
             No timestamps can be passed this way!
 
-        :return: InteractionMatrix constructed from the csr_matrix.
+        :return: InteractionMatrix constructed from the csr_array.
         :rtype: InteractionMatrix
         """
         # First extract easy interactions, only one occurence.

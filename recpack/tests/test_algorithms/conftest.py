@@ -8,7 +8,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 import torch
 import torch.nn as nn
 
@@ -29,14 +29,14 @@ def X_in():
         [1, 2, 1, 1, 1, 1],
     )
 
-    pv = csr_matrix((pv_values, (pv_users, pv_items)), shape=(10, 5))
+    pv = csr_array((pv_values, (pv_users, pv_items)), shape=(10, 5))
 
     return pv
 
 
 @pytest.fixture(scope="function")
 def X_in_interaction_m(X_in):
-    return InteractionMatrix.from_csr_matrix(X_in)
+    return InteractionMatrix.from_csr_array(X_in)
 
 
 @pytest.fixture(scope="function")
@@ -53,7 +53,7 @@ def larger_matrix():
         [1] * num_interactions,
     )
 
-    pv = csr_matrix((pv_values, (pv_users, pv_items)), shape=(num_users + 200, num_items))
+    pv = csr_array((pv_values, (pv_users, pv_items)), shape=(num_users + 200, num_items))
 
     return pv
 
@@ -65,8 +65,8 @@ def p2v_embedding():
     # values = [1] * 5
     # users = [0, 1, 2, 3, 4]
     # items = [0, 1, 2, 3, 4]
-    # target = sp.csr_matrix((values, (users, items)))
-    # target = InteractionMatrix.from_csr_matrix(target)
+    # target = sp.csr_array((values, (users, items)))
+    # target = InteractionMatrix.from_csr_array(target)
 
     # pre-defined embedding vectors
     embedding = [

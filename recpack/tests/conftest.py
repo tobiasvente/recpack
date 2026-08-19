@@ -8,7 +8,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.matrix import InteractionMatrix
 
@@ -26,7 +26,7 @@ def data():
         "values": [1, 2, 1, 1, 1, 2],
     }
 
-    matrix = csr_matrix(
+    matrix = csr_array(
         (
             input_dict["values"],
             (
@@ -45,7 +45,7 @@ def ranked_data_complete():
     ranked_items = [0, 2, 4, 1, 3, 4]
     ranked_ranks = [3, 2, 1, 3, 1, 2]
 
-    matrix = csr_matrix(
+    matrix = csr_array(
         (ranked_ranks, (ranked_users, ranked_items)),
         shape=(10, 5),
     )
@@ -60,7 +60,7 @@ def data_knn():
         [0.3, 0.2, 0.1, 0.23, 0.3, 0.5],
     )
 
-    pred = csr_matrix((pred_values, (pred_users, pred_items)), shape=(10, 5))
+    pred = csr_array((pred_values, (pred_users, pred_items)), shape=(10, 5))
 
     return pred
 
@@ -104,7 +104,7 @@ def larger_mat():
 @pytest.fixture(scope="function")
 def matrix_sessions() -> InteractionMatrix:
     # (user, time) matrix, non-zero entries are item ids
-    user_time = csr_matrix(
+    user_time = csr_array(
         [
             # 0  1  2  3  4  5  6  7
             [0, 1, 2, 0, 0, 0, 0, 0],

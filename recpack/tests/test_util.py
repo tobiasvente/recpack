@@ -28,7 +28,7 @@ def test_get_topK_ranks():
 def test_get_all_topK_ranks(data, ranked_data_complete):
     top_k_ranks = get_top_K_ranks(data, None)
     np.testing.assert_almost_equal(
-        top_k_ranks.todense(), ranked_data_complete.todense()
+        top_k_ranks.toarray(), ranked_data_complete.toarray()
     )
 
 
@@ -55,8 +55,8 @@ def test_get_top_K_values(data_knn):
         [0.3, 0.2, 0.3, 0.5],
     )
 
-    topK = scipy.sparse.csr_matrix(
+    topK = scipy.sparse.csr_array(
         (topK_values, (topK_users, topK_items)), shape=(10, 5)
     )
 
-    np.testing.assert_almost_equal(topK.todense(), top_k_values.todense())
+    np.testing.assert_almost_equal(topK.toarray(), top_k_values.toarray())

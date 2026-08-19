@@ -10,7 +10,7 @@ import logging
 from typing import List, Tuple, Optional
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_array, lil_array
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
@@ -160,7 +160,7 @@ class RecVAE(TorchMLAlgorithm):
         self.enc_optimizer = None
         self.dec_optimizer = None
 
-    def _init_model(self, X: csr_matrix):
+    def _init_model(self, X: csr_array):
         """
         Initialize Torch model and optimizer.
 
@@ -247,7 +247,7 @@ class RecVAE(TorchMLAlgorithm):
 
         return losses
 
-    def _train_epoch(self, train_data: csr_matrix):
+    def _train_epoch(self, train_data: csr_array):
         """
         Perform one training epoch.
         Data is processed in batches of self.batch_size users.
@@ -270,16 +270,16 @@ class RecVAE(TorchMLAlgorithm):
 
         return losses
 
-    def _batch_predict(self, X: csr_matrix, users: List[int]) -> csr_matrix:
+    def _batch_predict(self, X: csr_array, users: List[int]) -> csr_array:
         """Predict scores for matrix X, given the selected users in this batch
 
         :param X: Matrix of user item interactions,
             expected to only contain interactions for those users that are in `users`
-        :type X: csr_matrix
+        :type X: csr_array
         :param users: users selected for recommendation
         :type users: List[int]
         :return: Sparse matrix of scores per user item pair.
-        :rtype: csr_matrix
+        :rtype: csr_array
         """
         active_users = X[users]
 
@@ -287,7 +287,7 @@ class RecVAE(TorchMLAlgorithm):
 
         out_tensor, _, _ = self.model_(in_tensor)
 
-        result = lil_matrix(X.shape)
+        result = lil_array(X.shape)
         result[users] = out_tensor.detach().cpu().numpy()
 
         return result.tocsr()

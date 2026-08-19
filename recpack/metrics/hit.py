@@ -9,7 +9,7 @@ import logging
 
 import numpy as np
 import scipy.sparse
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.metrics.base import ElementwiseMetricK
 from recpack.metrics.util import sparse_divide_nonzero
@@ -32,9 +32,9 @@ class HitK(ElementwiseMetricK):
     def __init__(self, K):
         super().__init__(K)
 
-    def _calculate(self, y_true: csr_matrix, y_pred_top_K: csr_matrix) -> None:
+    def _calculate(self, y_true: csr_array, y_pred_top_K: csr_array) -> None:
 
-        scores = scipy.sparse.lil_matrix(y_pred_top_K.shape)
+        scores = scipy.sparse.lil_array(y_pred_top_K.shape)
 
         # Elementwise multiplication of top K predicts and true interactions
         scores[y_pred_top_K.multiply(y_true).astype(bool)] = 1
@@ -65,7 +65,7 @@ class DiscountedGainK(ElementwiseMetricK):
     def __init__(self, K):
         super().__init__(K)
 
-    def _calculate(self, y_true: csr_matrix, y_pred_top_K: csr_matrix) -> None:
+    def _calculate(self, y_true: csr_array, y_pred_top_K: csr_array) -> None:
 
         denominator = y_pred_top_K.multiply(y_true)
         # Denominator: log2(rank_i + 1)

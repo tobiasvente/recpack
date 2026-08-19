@@ -10,7 +10,7 @@ import operator
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from recpack.algorithms import ItemKNN
 from recpack.matrix import to_binary
@@ -26,7 +26,7 @@ def data():
     values = [1] * 7
     users = [0, 0, 1, 1, 2, 2, 2]
     items = [1, 2, 0, 2, 0, 1, 2]
-    d = csr_matrix((values, (users, items)), shape=(4, 3))
+    d = csr_array((values, (users, items)), shape=(4, 3))
 
     return d
 
@@ -36,7 +36,7 @@ def data_empty_col():
     values = [1] * 5
     users = [0, 0, 1, 1, 2]
     items = [1, 2, 2, 1, 2]
-    d = csr_matrix((values, (users, items)))
+    d = csr_array((values, (users, items)))
 
     return d
 
@@ -58,13 +58,13 @@ def test_item_knn(data):
 
     # Make sure the similarities recommended are the cosine similarities as computed.
     # If we create users with a single item seen in order.
-    _in = csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    _in = csr_array(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
     result = algo.predict(_in)
 
     np.testing.assert_almost_equal(result.toarray(), expected_similarities)
 
     # Make sure similarities are added correctly.
-    _in = csr_matrix(([1, 1], ([0, 0], [0, 1])), shape=(1, 3))
+    _in = csr_array(([1, 1], ([0, 0], [0, 1])), shape=(1, 3))
     expected_out = [[0.5, 0.5, 4 / math.sqrt(6)]]
     result = algo.predict(_in)
     np.testing.assert_almost_equal(result.toarray(), expected_out)
@@ -203,7 +203,7 @@ def test_item_pnn(data, K, pdf):
     sims = algo.similarity_matrix_
     binary_sims = to_binary(sims)
 
-    np.testing.assert_array_equal(binary_sims.sum(axis=1).A, K)
+    np.testing.assert_array_equal(binary_sims.sum(axis=1), K)
 
 
 def test_item_pnn_uniform_larger(larger_matrix):
@@ -238,7 +238,7 @@ def test_item_pnn_uniform_larger(larger_matrix):
 def test_item_pnn_compute_df(K, pdf):
     algo = ItemPNN(K=K, similarity="cosine", pdf=pdf)
 
-    X = csr_matrix([[0.5, 0.2, 0.3], [0.2, 0.3, 0.5], [0.5, 0.5, 0]])
+    X = csr_array([[0.5, 0.2, 0.3], [0.2, 0.3, 0.5], [0.5, 0.5, 0]])
 
     p = algo._compute_pdf(pdf, X)
 
@@ -248,7 +248,7 @@ def test_item_pnn_compute_df(K, pdf):
 
 def test_conditional_probability():
     # fmt: off
-    X = csr_matrix([
+    X = csr_array([
         [1, 0.5],
         [0, 0.25],
         [1, 1]
@@ -285,7 +285,7 @@ def test_conditional_probability():
 
 def test_compute_pearson_similarity():
     # fmt: off
-    data = csr_matrix([
+    data = csr_array([
         [1, 0, 1, 0],
         [2, 0, 2, 0],
         [0, 3, 0, 3],
@@ -305,7 +305,7 @@ def test_compute_pearson_similarity():
 
 
 def test_compute_pearson_similarity_binary_matrix():
-    data = csr_matrix([[1, 0, 1, 0], [0, 1, 0, 1]])
+    data = csr_array([[1, 0, 1, 0], [0, 1, 0, 1]])
 
     with pytest.raises(ValueError) as e:
         compute_pearson_similarity(data)

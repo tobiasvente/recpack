@@ -15,7 +15,7 @@ import scipy.sparse
 from sklearn.linear_model import SGDRegressor
 
 from recpack.algorithms.base import ItemSimilarityMatrixAlgorithm
-from recpack.matrix import Matrix, to_csr_matrix
+from recpack.matrix import Matrix, to_csr_array
 
 
 class SLIM(ItemSimilarityMatrixAlgorithm):
@@ -62,9 +62,13 @@ class SLIM(ItemSimilarityMatrixAlgorithm):
 
     def _compute_similarities(self, work_matrix, item):
         new_matrix = work_matrix.tocoo()
-        target = new_matrix.getcol(item)
+        target = new_matrix[:, [item]]
         data_indices = np.where(new_matrix.col == item)[0]
         new_matrix.data[data_indices] = 0
+        # SGDRegressor doesn't accept sparse inputs with 64-bit integer indices so we convert to 32-bit
+        new_matrix = new_matrix.tocsr()
+        new_matrix.indices = new_matrix.indices.astype(np.int32)
+        new_matrix.indptr = new_matrix.indptr.astype(np.int32)
         self.model.fit(new_matrix, target.toarray().ravel())
 
         w = self.model.coef_
@@ -78,7 +82,7 @@ class SLIM(ItemSimilarityMatrixAlgorithm):
         X is an m x n binary matrix of user item interactions.
         Where m is the number of users, and n the number of items.
         """
-        X = to_csr_matrix(X, binary=True)
+        X = to_csr_array(X, binary=True)
 
         # Prep sparse representation inputs
         data = []
@@ -98,4 +102,4 @@ class SLIM(ItemSimilarityMatrixAlgorithm):
 
         # Construct similarity matrix.
         # Shape is determined by 2nd dimension of the shape of input matrix X
-        self.similarity_matrix_ = scipy.sparse.csr_matrix((data, (row, col)), shape=(X.shape[1], X.shape[1]))
+        self.similarity_matrix_ = scipy.sparse.csr_array((data, (row, col)), shape=(X.shape[1], X.shape[1]))

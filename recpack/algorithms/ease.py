@@ -11,7 +11,7 @@ import numpy as np
 import scipy.sparse
 
 from recpack.algorithms.base import ItemSimilarityMatrixAlgorithm
-from recpack.matrix import Matrix, to_csr_matrix
+from recpack.matrix import Matrix, to_csr_array
 
 logger = logging.getLogger("recpack")
 
@@ -75,7 +75,7 @@ class EASE(ItemSimilarityMatrixAlgorithm):
         https://arxiv.org/pdf/1904.13033.pdf
         Eq. 14 B_scaled = B * diagM(w)
         """
-        X = to_csr_matrix(X, binary=True)
+        X = to_csr_array(X, binary=True)
 
         # Compute P
         XTX = (X.T @ X).toarray()
@@ -89,7 +89,7 @@ class EASE(ItemSimilarityMatrixAlgorithm):
             w = 1 / np.diag(XTX) ** self.alpha
             B = B @ np.diag(w)
 
-        self.similarity_matrix_ = scipy.sparse.csr_matrix(B)
+        self.similarity_matrix_ = scipy.sparse.csr_array(B)
 
         if self.density:
             self._prune()
