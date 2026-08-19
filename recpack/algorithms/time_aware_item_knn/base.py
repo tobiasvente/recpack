@@ -168,7 +168,7 @@ class TARSItemKNN(TopKItemSimilarityMatrixAlgorithm):
         X = self._add_decay_to_fit_matrix(X)
 
         if self.similarity == "cosine":
-            item_similarities = compute_cosine_similarity(X)
+            item_similarities = compute_cosine_similarity(X.T)
         elif self.similarity == "conditional_probability":
             item_similarities = compute_conditional_probability(X)
         elif self.similarity == "pearson":

@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 from scipy.sparse import csr_array
 
-from recpack.algorithms import ItemKNN
+from recpack.algorithms import ItemKNN, UserKNN
 from recpack.matrix import to_binary
 from recpack.algorithms.nearest_neighbour import (
     ItemPNN,
@@ -28,7 +28,7 @@ from recpack.algorithms.nearest_neighbour import (
 
 
 @pytest.fixture(scope="function")
-def data():
+def data_item_knn():
     values = [1] * 7
     users = [0, 0, 1, 1, 2, 2, 2]
     items = [1, 2, 0, 2, 0, 1, 2]
@@ -47,11 +47,29 @@ def data_empty_col():
     return d
 
 
-def test_item_knn(data):
+@pytest.fixture(scope="function")
+def data_user_knn():
+    values = [1] * 7
+    users = [0, 0, 1, 1, 2, 2, 2]
+    items = [1, 2, 0, 2, 0, 1, 2]
+    d = csr_matrix((values, (users, items)), shape=(3, 4))
+
+    return d
+
+@pytest.fixture(scope="function")
+def data_empty_row():
+    values = [1] * 5
+    users = [0, 0, 1, 1, 1]
+    items = [1, 2, 0, 1, 2]
+    d = csr_matrix((values, (users, items)), shape=(3, 3))
+
+    return d
+
+def test_item_knn(data_item_knn):
 
     algo = ItemKNN(K=2)
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     expected_similarities = np.array(
         [
@@ -76,11 +94,11 @@ def test_item_knn(data):
     np.testing.assert_almost_equal(result.toarray(), expected_out)
 
 
-def test_item_knn_normalize_X(data):
+def test_item_knn_normalize_X(data_item_knn):
 
     algo = ItemKNN(K=2, similarity="cosine", normalize_X=True)
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     # data matrix looks like
     # 0 1 1
@@ -113,11 +131,11 @@ def test_item_knn_normalize_X(data):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_normalize_sim(data):
+def test_item_knn_normalize_sim(data_item_knn):
 
     algo = ItemKNN(K=2, normalize_sim=True)
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     np.testing.assert_array_almost_equal(algo.similarity_matrix_.sum(axis=1), 1)
 
@@ -130,10 +148,10 @@ def test_item_knn_empty_col(data_empty_col):
     np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
 
 
-def test_item_knn_conditional_probability(data):
+def test_item_knn_conditional_probability(data_item_knn):
     algo = ItemKNN(K=2, similarity="conditional_probability")
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # similarity is computed as count(i^j) / (count(i) + 1)
 
     # data matrix looks like
@@ -159,10 +177,10 @@ def test_item_knn_conditional_probability(data):
 
 
 @pytest.mark.parametrize("pop_discount", [1, 0.2, 0.5])
-def test_item_knn_conditional_probability_w_pop_discount(data, pop_discount):
+def test_item_knn_conditional_probability_w_pop_discount(data_item_knn, pop_discount):
     algo = ItemKNN(K=2, similarity="conditional_probability", pop_discount=pop_discount)
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
     # similarity is computed as count(i^j) / (count(i) * count(j) ^ pop_discount)
 
     # data matrix looks like
@@ -327,10 +345,10 @@ def test_item_knn_pmi(data):
         (2, "softmax_empirical"),
     ],
 )
-def test_item_pnn(data, K, pdf):
+def test_item_pnn(data_item_knn, K, pdf):
     algo = ItemPNN(K=K, similarity="cosine", pdf=pdf)
 
-    algo.fit(data)
+    algo.fit(data_item_knn)
 
     # Test number of nonzeroes
     sims = algo.similarity_matrix_
@@ -602,3 +620,61 @@ def test_compute_pearson_similarity_binary_matrix():
         compute_pearson_similarity(data)
 
     assert e.match("binary matrix")
+
+
+def test_user_knn(data_user_knn):
+    algo = UserKNN(K=2)
+
+    algo.fit(data_user_knn)
+
+    # Diagonal is zero because self similarity is removed.
+    expected_similarities = np.array(
+        [
+            [0, 0.5, 2 / math.sqrt(6)],
+            [0.5, 0, 2 / math.sqrt(6)],
+            [2 / math.sqrt(6), 2 / math.sqrt(6), 0],
+        ]
+    )
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+    # Users with one distinct interaction reproduce the similarity matrix.
+    X = csr_matrix(([1, 1, 1], ([0, 1, 2], [0, 1, 2])), shape=(3, 3))
+    result = algo.predict(X)
+    np.testing.assert_almost_equal(result.toarray(), expected_similarities)
+
+    # Contributions from multiple similar users are added.
+    X = csr_matrix(([1, 1], ([0, 1], [0, 0])), shape=(3, 1))
+    expected_out = [[0.5], [0.5], [4 / math.sqrt(6)]]
+    result = algo.predict(X)
+    np.testing.assert_almost_equal(result.toarray(), expected_out)
+
+
+def test_user_knn_empty_row(data_empty_row):
+    algo = UserKNN(K=2)
+
+    algo.fit(data_empty_row)
+
+    expected_similarities = np.array(
+        [[0, 2 / math.sqrt(6), 0], [2 / math.sqrt(6), 0, 0], [0, 0, 0]]
+    )
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_user_knn_conditional_probability(data_user_knn):
+    algo = UserKNN(K=2, similarity="conditional_probability")
+
+    algo.fit(data_user_knn)
+
+    expected_similarities = np.array(
+        [
+            [0, 1 / 2, 2 / 2],
+            [1 / 2, 0, 2 / 2],
+            [2 / 3, 2 / 3, 0],
+        ]
+    )
+    np.testing.assert_almost_equal(algo.similarity_matrix_.toarray(), expected_similarities)
+
+
+def test_user_knn_unsupported_similarity():
+    with pytest.raises(ValueError, match="similarity unsupported not supported"):
+        UserKNN(K=2, similarity="unsupported")
