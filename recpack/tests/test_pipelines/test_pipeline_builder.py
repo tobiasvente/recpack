@@ -437,4 +437,4 @@ def test_pipelinebuilder_no_k(mat):
 
     metrics = p.get_metrics()
 
-    assert metrics.columns == ["PercentileRanking"]
+    assert metrics.columns.tolist() == ["fitting_time", "inference_time","PercentileRanking"]
