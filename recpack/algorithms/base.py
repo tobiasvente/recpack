@@ -24,6 +24,7 @@ from recpack.algorithms.stopping_criterion import (
 )
 from recpack.algorithms.util import get_batches, get_users, sample_rows
 from recpack.matrix import InteractionMatrix, to_csr_matrix, Matrix
+from recpack.metrics.base import TimeMetric
 from recpack.util import get_top_K_values
 
 
@@ -41,6 +42,8 @@ class Algorithm(BaseEstimator):
 
     def __init__(self):
         super().__init__()
+        self._fit_time = None
+        self._predict_time = None
 
     @property
     def name(self):
@@ -59,6 +62,22 @@ class Algorithm(BaseEstimator):
         """
         paramstring = ",".join((f"{k}={v}" for k, v in self.get_params().items()))
         return self.name + "(" + paramstring + ")"
+
+    @property
+    def fit_time(self):
+        """Elapsed time of the most recent successful fit, in seconds.
+
+        Returns ``None`` until :meth:`fit` has completed successfully.
+        """
+        return self._fit_time
+
+    @property
+    def predict_time(self):
+        """Elapsed time of the most recent successful prediction, in seconds.
+
+        Returns ``None`` until :meth:`predict` has completed successfully.
+        """
+        return self._predict_time
 
     def __str__(self):
         return self.name
@@ -187,7 +206,9 @@ class Algorithm(BaseEstimator):
 
         self._check_fit_complete()
         end = time.time()
-        logger.info(f"Fitting {self.name} complete - Took {end - start :.3}s")
+        fitting_time = end - start
+        logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
+        self._fit_time = TimeMetric(fitting_time)
         return self
 
     def predict(self, X: Matrix) -> csr_matrix:
@@ -198,6 +219,7 @@ class Algorithm(BaseEstimator):
         This function is a wrapper around the :meth:`_predict` method,
         and performs checks on in- and output data to guarantee proper computation.
 
+        - The predict function gets timed, and this will get printed
         - Checks that model is fitted correctly
         - checks the output using :meth:`_check_prediction` function
 
@@ -206,6 +228,7 @@ class Algorithm(BaseEstimator):
         :return: The recommendation scores in a sparse matrix format.
         :rtype: csr_matrix
         """
+        start = time.time()
         self._check_fit_complete()
 
         X = self._transform_predict_input(X)
@@ -213,7 +236,10 @@ class Algorithm(BaseEstimator):
         X_pred = self._predict(X)
 
         self._check_prediction(X_pred, X)
-
+        end = time.time()
+        inference_time = end - start
+        logger.info(f"{self.name} inference complete - Took {inference_time:.3}s")
+        self._predict_time = TimeMetric(inference_time)
         return X_pred
 
 
@@ -724,7 +750,9 @@ class TorchMLAlgorithm(Algorithm):
 
         self._check_fit_complete()
         end = time.time()
-        logger.info(f"Fitting {self.name} complete - Took {end - start :.3}s")
+        fitting_time = end - start
+        logger.info(f"Fitting {self.name} complete - Took {fitting_time :.3}s")
+        self._fit_time = TimeMetric(fitting_time)
 
         return self
 
