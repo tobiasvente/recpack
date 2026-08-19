@@ -29,12 +29,17 @@ def to_csr_array(
 ) -> Union[csr_array, Tuple[csr_array, ...]]:
     """Convert a matrix-like object to a scipy csr_array.
 
-    :param X: Matrix-like object or tuple of objects to convert.
-    :type X: csr_array
+    Tuples and lists are converted recursively and retain their container type.
+    Existing CSR arrays are returned without copying unless ``binary`` is
+    true. :class:`~recpack.matrix.InteractionMatrix` objects are represented by
+    their :attr:`~recpack.matrix.InteractionMatrix.values` matrix.
+
+    :param X: Matrix-like object, or a nested tuple or list of such objects.
+    :type X: Matrix or tuple of Matrix
     :param binary: If true, ensure matrix is binary by setting non-zero values to 1.
     :type binary: bool, optional
-    :raises: UnsupportedTypeError
-    :return: Matrices as csr_array.
+    :raises UnsupportedTypeError: If an object is not a supported matrix type.
+    :return: CSR array, or a converted container matching the input structure.
     :rtype: Union[csr_array, Tuple[csr_array, ...]]
     """
     if isinstance(X, (tuple, list)):
