@@ -60,6 +60,7 @@ they have interacted with.
     SLIM
     ItemKNN
     ItemPNN
+    BPRKNN
     NMFItemToItem
     SVDItemToItem
     Prod2Vec
@@ -262,7 +263,7 @@ from recpack.algorithms.slim import SLIM
 
 from recpack.algorithms.nearest_neighbour import ItemKNN, ItemPNN, UserKNN
 from recpack.algorithms.kunn import KUNN
-from recpack.algorithms.bprmf import BPRMF
+from recpack.algorithms.bpr import BPRBase, BPRKNN, BPRMF
 
 # from recpack.algorithms.metric_learning.cml import CML
 
