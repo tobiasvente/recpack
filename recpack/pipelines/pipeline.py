@@ -17,6 +17,7 @@ from tqdm.auto import tqdm
 
 from recpack.algorithms.base import Algorithm, TorchMLAlgorithm
 from recpack.matrix import InteractionMatrix
+from recpack.metrics.base import MetricTopK
 from recpack.pipelines.registries import (
     ALGORITHM_REGISTRY,
     METRIC_REGISTRY,
@@ -151,13 +152,30 @@ class Pipeline(object):
             # Make predictions
             X_pred = self._predict_and_postprocess(algorithm, self.test_data_in)
 
+            # Metrics that share a K recompute the same (expensive) top-K
+            # ranking of X_pred independently. Since y_true (test_data_out)
+            # and X_pred are identical for every metric_entry below, the
+            # top-K ranks for a given K are too - cache the first result per
+            # K and hand it to subsequent metrics with that K instead of
+            # recomputing it. Scoped locally to this algorithm's evaluation,
+            # so it can never leak a stale result across algorithms.
+            top_k_cache: Dict[int, csr_matrix] = {}
+
             for metric_entry in self.metric_entries:
                 metric_cls = METRIC_REGISTRY.get(metric_entry.name)
                 if metric_entry.K is not None:
                     metric = metric_cls(K=metric_entry.K)
                 else:
                     metric = metric_cls()
-                metric.calculate(self.test_data_out.binary_values, X_pred)
+
+                if isinstance(metric, MetricTopK):
+                    metric.calculate(
+                        self.test_data_out.binary_values, X_pred, y_pred_top_K=top_k_cache.get(metric_entry.K)
+                    )
+                    top_k_cache.setdefault(metric_entry.K, metric.y_pred_top_K_)
+                else:
+                    metric.calculate(self.test_data_out.binary_values, X_pred)
+
                 self._metric_acc.add(metric, algorithm.identifier, metric.name)
 
     def _train(self, algorithm: Algorithm, training_data: InteractionMatrix) -> Algorithm:

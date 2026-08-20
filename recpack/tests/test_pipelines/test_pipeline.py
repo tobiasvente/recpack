@@ -209,3 +209,55 @@ def test_pipeline_optimisation_results_output(pipeline_builder_optimisation_no_a
 
     # EASE optimial hyperparameter asserts
     assert "l2" in pipe.optimisation_results["params"].iloc[-1]
+
+
+def test_pipeline_caches_top_k_ranks_across_metrics_with_same_k(mat):
+    """Metrics of different types that share a K should only trigger one
+    top-K ranking computation per algorithm, not one per metric."""
+    from recpack.pipelines import PipelineBuilder
+    from recpack.util import get_top_K_ranks
+
+    pb = PipelineBuilder("test_top_k_cache")
+    # Two different metric types at the same K: should share one computation.
+    pb.add_metric("RecallK", 2)
+    pb.add_metric("NDCGK", 2)
+    # A third metric at a different K: needs its own computation.
+    pb.add_metric("RecallK", 3)
+    pb.add_algorithm("ItemKNN", params={"K": 2})
+    pb.set_full_training_data(mat)
+    pb.set_test_data((mat, mat))
+    pb.remove_history = False  # so the reference computation below matches directly
+
+    pipeline = pb.build()
+
+    with patch("recpack.metrics.base.get_top_K_ranks", wraps=get_top_K_ranks) as mock_get_top_K_ranks:
+        pipeline.run()
+
+    # One call for K=2 (shared by RecallK and NDCGK) + one call for K=3.
+    assert mock_get_top_K_ranks.call_count == 2
+
+    called_Ks = [c.args[1] for c in mock_get_top_K_ranks.call_args_list]
+    assert sorted(called_Ks) == [2, 3]
+
+    # The cached results must still be correct, not just "reused": each
+    # metric's own value should match what it would compute standalone,
+    # against an independently trained-and-predicted ItemKNN(K=2).
+    metrics_df = pipeline.get_metrics()
+    assert "RecallK_2" in metrics_df.columns
+    assert "NDCGK_2" in metrics_df.columns
+    assert "RecallK_3" in metrics_df.columns
+
+    from recpack.algorithms import ItemKNN
+    from recpack.metrics import RecallK, NDCGK
+
+    reference_algo = ItemKNN(K=2)
+    reference_algo.fit(mat)
+    X_pred = reference_algo.predict(mat)
+
+    expected_recall_2 = RecallK(2)
+    expected_recall_2.calculate(mat.binary_values, X_pred)
+    expected_ndcg_2 = NDCGK(2)
+    expected_ndcg_2.calculate(mat.binary_values, X_pred)
+
+    assert metrics_df["RecallK_2"].iloc[0] == pytest.approx(expected_recall_2.value)
+    assert metrics_df["NDCGK_2"].iloc[0] == pytest.approx(expected_ndcg_2.value)

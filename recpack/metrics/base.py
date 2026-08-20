@@ -169,7 +169,7 @@ class MetricTopK(Metric):
         """
         raise NotImplementedError()
 
-    def calculate(self, y_true: csr_matrix, y_pred: csr_matrix) -> None:
+    def calculate(self, y_true: csr_matrix, y_pred: csr_matrix, y_pred_top_K: csr_matrix = None) -> None:
         """Computes metric given true labels ``y_true`` and predicted scores ``y_pred``. Only Top-K recommendations are considered.
 
         Detailed metric results can be retrieved with :attr:`results`.
@@ -179,14 +179,26 @@ class MetricTopK(Metric):
         :type y_true: csr_matrix
         :param y_pred: Predicted affinity of users for items.
         :type y_pred: csr_matrix
+        :param y_pred_top_K: Precomputed top-K ranks for ``y_pred`` at this
+            metric's K, as previously returned by :meth:`get_top_K_ranks`
+            (and stored on :attr:`y_pred_top_K_`) for the *same*
+            ``(y_true, y_pred)`` pair. When given, the (computationally
+            expensive) top-K ranking is not recomputed. Passing a value
+            computed for a different ``y_true``/``y_pred`` pair or a
+            different K produces incorrect results - only reuse a value
+            obtained from another call with identical ``y_true``/``y_pred``
+            and the same K. Defaults to None, which always recomputes it.
+        :type y_pred_top_K: csr_matrix, optional
         """
         # Perform checks and cleaning
         y_true, y_pred = self._eliminate_empty_users(y_true, y_pred)
         self._verify_shape(y_true, y_pred)
         self._set_shape(y_true)
 
-        # Compute the topK for the predicted affinities
-        y_pred_top_K = get_top_K_ranks(y_pred, self.K)
+        # Compute the topK for the predicted affinities, unless a caller
+        # already computed it for this exact (y_true, y_pred, K) combination.
+        if y_pred_top_K is None:
+            y_pred_top_K = get_top_K_ranks(y_pred, self.K)
         self.y_pred_top_K_ = y_pred_top_K
 
         # Compute the metric.
