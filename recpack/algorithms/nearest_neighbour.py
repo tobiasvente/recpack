@@ -645,7 +645,8 @@ class UserKNN(Algorithm):
 
     For each user, the K most similar users are computed during fit.
     The similarity parameter determines how similarity between two users is
-    computed. Supported options are ``"cosine"`` and ``"conditional_probability"``.
+    computed. Supported options are ``"cosine"``, ``"conditional_probability"``,
+    ``"jaccard"``, ``"dice"``, ``"overlap"``, ``"lift"``, and ``"pmi"``.
 
     Cosine similarity between users u and v is computed as
 
@@ -668,12 +669,13 @@ class UserKNN(Algorithm):
         the number of rows in the matrix used for fitting.
     :type K: int
     :param similarity: Which similarity measure to use. Can be one of
-        ``["cosine", "conditional_probability"]``. Defaults to ``"cosine"``.
+        ``["cosine", "conditional_probability", "jaccard", "dice", "overlap",
+        "lift", "pmi"]``. Defaults to ``"cosine"``.
     :type similarity: str, optional
     :raises ValueError: If an unsupported similarity measure is passed.
     """
 
-    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability"]
+    SUPPORTED_SIMILARITIES = ["cosine", "conditional_probability", "jaccard", "dice", "overlap", "lift", "pmi",]
 
     def __init__(self, K, similarity: str = "cosine"):
         super().__init__()
@@ -691,6 +693,16 @@ class UserKNN(Algorithm):
             user_similarities = compute_cosine_similarity(X)
         elif self.similarity == "conditional_probability":
             user_similarities = compute_conditional_probability(X.T)
+        elif self.similarity == "jaccard":
+            user_similarities = compute_jaccard_similarity(X.T)
+        elif self.similarity == "dice":
+            user_similarities = compute_dice_similarity(X.T)
+        elif self.similarity == "overlap":
+            user_similarities = compute_overlap_similarity(X.T)
+        elif self.similarity == "lift":
+            user_similarities = compute_lift_similarity(X.T)
+        elif self.similarity == "pmi":
+            user_similarities = compute_pmi_similarity(X.T)
 
         user_similarities = get_top_K_values(user_similarities, K=self.K)
 
