@@ -363,11 +363,11 @@ class SASRecTorch(nn.Module):
         self.forward_layers = nn.ModuleList()
 
         for _ in range(num_blocks):
-            self.attention_layernorms.append(nn.LayerNorm(num_components))
+            self.attention_layernorms.append(nn.LayerNorm(num_components, eps=1e-8))
             self.attention_layers.append(
                 nn.MultiheadAttention(num_components, num_heads, dropout=dropout, batch_first=True)
             )
-            self.forward_layernorms.append(nn.LayerNorm(num_components))
+            self.forward_layernorms.append(nn.LayerNorm(num_components, eps=1e-8))
             self.forward_layers.append(
                 nn.Sequential(
                     nn.Linear(num_components, num_components),
@@ -378,7 +378,7 @@ class SASRecTorch(nn.Module):
                 )
             )
 
-        self.last_layernorm = nn.LayerNorm(num_components)
+        self.last_layernorm = nn.LayerNorm(num_components, eps=1e-8)
 
         nn.init.normal_(self.emb.weight, std=0.01)
         nn.init.normal_(self.pos_emb.weight, std=0.01)
@@ -411,13 +411,19 @@ class SASRecTorch(nn.Module):
         )
 
         for i in range(len(self.attention_layers)):
+            # As in the original SASRec (Kang & McAuley) implementation:
+            # only the attention queries are normalized (keys/values stay
+            # raw), and the residual connection is added to the normalized
+            # value rather than the raw pre-norm input - for both the
+            # attention and feed-forward sub-layers.
             q = self.attention_layernorms[i](x)
             attn_output, _ = self.attention_layers[i](
-                q, q, q, attn_mask=causal_mask, key_padding_mask=pad_mask, need_weights=False
+                q, x, x, attn_mask=causal_mask, key_padding_mask=pad_mask, need_weights=False
             )
-            x = x + attn_output
+            x = q + attn_output
 
-            x = x + self.forward_layers[i](self.forward_layernorms[i](x))
+            ff_input = self.forward_layernorms[i](x)
+            x = ff_input + self.forward_layers[i](ff_input)
             x = x.masked_fill(pad_mask.unsqueeze(-1), 0.0)
 
         x = self.last_layernorm(x)
