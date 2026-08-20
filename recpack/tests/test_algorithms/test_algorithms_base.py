@@ -27,6 +27,7 @@ from recpack.algorithms import (
     Prod2Vec,
     Prod2VecClustered,
     ItemPNN,
+    SASRec,
 )
 
 
@@ -81,6 +82,7 @@ def test_check_fit_complete(X_in):
         Prod2VecClustered,
         GRU4RecCrossEntropy,
         GRU4RecNegSampling,
+        SASRec,
     ],
 )
 def test_seed_is_set_consistently_None(algo):
@@ -103,6 +105,7 @@ def test_seed_is_set_consistently_None(algo):
         Prod2VecClustered,
         GRU4RecNegSampling,
         GRU4RecCrossEntropy,
+        SASRec,
     ],
 )
 def test_seed_is_set_consistently_42(algo):
@@ -115,7 +118,7 @@ def test_seed_is_set_consistently_42(algo):
 
 @pytest.mark.parametrize(
     "algo_class",
-    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy],
+    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy, SASRec],
 )
 def test_assert_is_interaction_matrix(algo_class, matrix_sessions):
     # No error when checking type
@@ -131,7 +134,7 @@ def test_assert_is_interaction_matrix(algo_class, matrix_sessions):
 
 @pytest.mark.parametrize(
     "algo_class",
-    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy],
+    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy, SASRec],
 )
 def test_assert_has_timestamps(algo_class, matrix_sessions):
 
@@ -145,7 +148,7 @@ def test_assert_has_timestamps(algo_class, matrix_sessions):
 
 @pytest.mark.parametrize(
     "algo_class",
-    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy],
+    [RecVAE, MultVAE, BPRMF, Prod2Vec, Prod2VecClustered, GRU4RecNegSampling, GRU4RecCrossEntropy, SASRec],
 )
 def test_sampled_validation(algo_class, larger_mat):
     N_SAMPLES = 50
@@ -165,5 +168,13 @@ def test_sampled_validation(algo_class, larger_mat):
 
     for c in mock.update.call_args_list:
         val_out, X_pred = c.args
-        assert len(set(val_out.nonzero()[0])) == N_SAMPLES
-        assert len(set(X_pred.nonzero()[0])) == N_SAMPLES
+        sampled_users = set(val_out.nonzero()[0])
+        assert len(sampled_users) == N_SAMPLES
+
+        # Predictions are made for the sampled users only.
+        # Not every algorithm can guarantee a recommendation for every user
+        # (e.g. Prod2VecClustered only recommends items from neighbouring
+        # clusters), so the predicted users are a subset of the sample.
+        predicted_users = set(X_pred.nonzero()[0])
+        assert predicted_users
+        assert predicted_users <= sampled_users
