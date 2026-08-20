@@ -248,6 +248,9 @@ class FractionInteractionSplitter(Splitter):
 
             rstate = np.random.RandomState(self.seed + u)
 
+            # pandas' Series.values can return a read-only view; shuffle
+            # requires a writable array.
+            interaction_history = np.array(interaction_history)
             rstate.shuffle(interaction_history)
             hist_len = len(interaction_history)
             cut = int(np.ceil(hist_len * self.in_frac))
